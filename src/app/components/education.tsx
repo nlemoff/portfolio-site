@@ -8,7 +8,7 @@ export default function Education() {
           <h3 className="text-lg font-semibold text-vaporwave-teal">University of California - Berkeley</h3>
           <span className="text-sm text-vaporwave-blue">August 2021 - December 2024</span>
         </div>
-        <p className="text-vaporwave-teal">Bachelor&apos;s in Computer Science</p>
+        <p className="text-vaporwave-teal">Bachelor&apos;s in Data Science</p>
       </CardContent>
     </Card>
   )

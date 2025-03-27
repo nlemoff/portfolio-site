@@ -115,31 +115,31 @@ export default function Home() {
               <ProjectCard
                 title="Audio Transcriber"
                 description="A macOS application that captures both microphone and system audio while providing real-time transcription capabilities using Fast API and Docker."
-                link="https://github.com/nlemoff"
+                link="https://github.com/nlemoff/audio-transcriber"
                 tags={["SwiftUI", "Docker", "Fast API", "GCP"]}
               />
               <ProjectCard
                 title="Machine Learning Visualizer"
                 description="A React-based web application for visualizing machine learning model predictions with interactive data visualization using Chart.js."
-                link="https://github.com/nlemoff"
+                link="https://github.com/nlemoff/ml-visualizer"
                 tags={["React", "TypeScript", "Chart.js", "Tailwind CSS"]}
               />
               <ProjectCard
                 title="POV Classification in Sentences"
                 description="A BERT-based deep learning model for multi-class Point of View (POV) classification in literary texts, achieving 65% accuracy."
-                link="https://github.com/nlemoff"
+                link="https://github.com/nlemoff/pov-classification"
                 tags={["BERT", "NLP", "Deep Learning", "Python"]}
               />
               <ProjectCard
                 title="Titanic Survival Prediction"
                 description="Led a UC Berkeley-hosted Kaggle competition team, focusing on predicting Titanic passenger survival with 80% accuracy."
-                link="https://github.com/nlemoff"
+                link="https://github.com/nlemoff/titanic-prediction"
                 tags={["Kaggle", "Machine Learning", "Python", "Data Science"]}
               />
               <ProjectCard
                 title="Earnings Predictions for College Graduates"
                 description="Analyzed the interplay between college majors, gender, and earnings, to shed light on the gender wage gap's influence in early career stages."
-                link="https://github.com/nlemoff"
+                link="https://github.com/nlemoff/earnings-prediction"
                 tags={["Data Analysis", "Prediction Models", "Python"]}
               />
             </div>
