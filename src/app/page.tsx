@@ -33,9 +33,6 @@ export default function Home() {
           </div>
           <div className="ml-auto flex items-center gap-2">
             <ThemeToggle />
-            <Button variant="outline" className="border-vaporwave-pink/50 hover:bg-vaporwave-pink/10">
-              Resume
-            </Button>
           </div>
         </div>
       </header>
@@ -112,6 +109,12 @@ export default function Home() {
               Projects
             </h2>
             <div className="max-w-4xl mx-auto space-y-6">
+              <ProjectCard
+                title="Personal Portfolio Website"
+                description="A modern, responsive portfolio website built with Next.js, TypeScript, and Tailwind CSS. Features a custom vaporwave theme, dark mode support, and EmailJS integration for the contact form."
+                link="https://github.com/nlemoff/portfolio-site"
+                tags={["Next.js", "TypeScript", "Tailwind CSS", "shadcn/ui"]}
+              />
               <ProjectCard
                 title="Audio Transcriber"
                 description="A macOS application that captures both microphone and system audio while providing real-time transcription capabilities using Fast API and Docker."
