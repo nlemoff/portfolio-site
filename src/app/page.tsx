@@ -1,4 +1,5 @@
-import { Metadata } from "next"
+'use client'
+
 import { Button } from "@/components/ui/button"
 import { Github, Linkedin, Mail } from "lucide-react"
 import Link from "next/link"
@@ -9,11 +10,6 @@ import Experience from "./components/experience"
 import Education from "./components/education"
 import { ThemeToggle } from "@/components/theme-toggle"
 import NavLink from "./components/nav-link"
-
-export const metadata: Metadata = {
-  title: "Nick Lemoff - Full Stack Developer & Data Scientist",
-  description: "Full Stack Developer, Data Scientist and Machine Learning Engineer portfolio showcasing projects and skills",
-}
 
 export default function Home() {
   return (
