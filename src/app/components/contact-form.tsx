@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useForm } from "react-hook-form"
+import emailjs from '@emailjs/browser'
 
 type FormData = {
   name: string
@@ -13,20 +14,32 @@ type FormData = {
   message: string
 }
 
+const EMAILJS_PUBLIC_KEY = "gqFPXLtgEw6xvtyn2"
+const EMAILJS_SERVICE_ID = "service_9a5wr3i"
+const EMAILJS_TEMPLATE_ID = "template_br06a7y"
+
 export default function ContactForm() {
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState("")
-  const { register, handleSubmit, formState: { isSubmitting } } = useForm<FormData>()
+  const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<FormData>()
 
   const onSubmit = async (data: FormData) => {
     setPending(true)
     try {
-      const formData = new FormData()
-      formData.append("name", data.name)
-      formData.append("email", data.email)
-      formData.append("message", data.message)
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
+        {
+          from_name: data.name,
+          from_email: data.email,
+          message: data.message,
+        },
+        EMAILJS_PUBLIC_KEY
+      )
       setMessage("Message sent successfully!")
-    } catch {
+      reset() // Clear the form
+    } catch (error) {
+      console.error('Error sending email:', error)
       setMessage("Failed to send message. Please try again.")
     } finally {
       setPending(false)
