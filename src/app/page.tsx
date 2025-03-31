@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from "@/components/ui/button"
-import { Github, Linkedin, Mail } from "lucide-react"
+import { Github, Linkedin, Mail, Twitter } from "lucide-react"
 import Link from "next/link"
 import ContactForm from "./components/contact-form"
 import ProjectCard from "./components/project-card"
@@ -70,14 +70,14 @@ export default function Home() {
                     <span className="sr-only">LinkedIn</span>
                   </Button>
                 </Link>
-                <Link href="mailto:nlemoff@gmail.com">
+                <Link href="https://x.com/nlemoff" target="_blank">
                   <Button
                     variant="outline"
                     size="icon"
                     className="border-vaporwave-teal/50 hover:bg-vaporwave-teal/10 hover:border-vaporwave-teal"
                   >
-                    <Mail className="h-4 w-4" />
-                    <span className="sr-only">Email</span>
+                    <Twitter className="h-4 w-4" />
+                    <span className="sr-only">Twitter</span>
                   </Button>
                 </Link>
               </div>
@@ -172,15 +172,7 @@ export default function Home() {
 
       <footer className="border-t border-vaporwave-pink/20">
         <div className="container flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6">
-          <p className="text-xs text-gray-400 dark:text-gray-300">© 2024 Nick Lemoff. All rights reserved.</p>
-          <nav className="sm:ml-auto flex gap-4 sm:gap-6">
-            <Link className="text-xs hover:text-vaporwave-pink transition-colors" href="mailto:nlemoff@gmail.com">
-              nlemoff@gmail.com
-            </Link>
-            <Link className="text-xs hover:text-vaporwave-pink transition-colors" href="tel:+13046852696">
-              +1 (304) 685-2696
-            </Link>
-          </nav>
+          <p className="text-xs text-gray-400 dark:text-gray-300">© 2025 Nick Lemoff. All rights reserved.</p>
         </div>
       </footer>
     </div>
