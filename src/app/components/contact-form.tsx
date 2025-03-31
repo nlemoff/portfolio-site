@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,18 +23,25 @@ export default function ContactForm() {
   const [message, setMessage] = useState("")
   const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<FormData>()
 
+  useEffect(() => {
+    emailjs.init(EMAILJS_PUBLIC_KEY)
+  }, [])
+
   const onSubmit = async (data: FormData) => {
     setPending(true)
     try {
+      const templateParams = {
+        to_name: "Nick",
+        from_name: data.name,
+        from_email: data.email,
+        message: data.message,
+        reply_to: data.email,
+      }
+
       await emailjs.send(
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
-        {
-          to_name: "Nick",
-          from_name: data.name,
-          reply_to: data.email,
-          message: data.message,
-        },
+        templateParams,
         EMAILJS_PUBLIC_KEY
       )
       setMessage("Message sent successfully!")
