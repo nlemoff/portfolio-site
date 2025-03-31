@@ -30,8 +30,9 @@ export default function ContactForm() {
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
         {
+          to_name: "Nick",
           from_name: data.name,
-          from_email: data.email,
+          reply_to: data.email,
           message: data.message,
         },
         EMAILJS_PUBLIC_KEY
