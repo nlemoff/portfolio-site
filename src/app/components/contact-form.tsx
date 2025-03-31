@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,12 +15,13 @@ type FormData = {
 }
 
 const EMAILJS_PUBLIC_KEY = "gqFPXLtgEw6xvtyn2"
-const EMAILJS_SERVICE_ID = "service_9a5wr3i"
+const EMAILJS_SERVICE_ID = "default_service"
 const EMAILJS_TEMPLATE_ID = "template_br06a7y"
 
 export default function ContactForm() {
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState("")
+  const formRef = useRef<HTMLFormElement>(null)
   const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<FormData>()
 
   useEffect(() => {
@@ -28,20 +29,14 @@ export default function ContactForm() {
   }, [])
 
   const onSubmit = async (data: FormData) => {
+    if (!formRef.current) return
+    
     setPending(true)
     try {
-      const templateParams = {
-        to_name: "Nick",
-        from_name: data.name,
-        from_email: data.email,
-        message: data.message,
-        reply_to: data.email,
-      }
-
-      await emailjs.send(
+      await emailjs.sendForm(
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
-        templateParams,
+        formRef.current,
         EMAILJS_PUBLIC_KEY
       )
       setMessage("Message sent successfully!")
@@ -56,13 +51,14 @@ export default function ContactForm() {
 
   return (
     <Card className="vaporwave-card p-6 border-vaporwave-purple/30 hover:border-vaporwave-purple/60 transition-all">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
           <label htmlFor="name" className="block text-sm font-medium mb-2 text-vaporwave-teal">
             Name
           </label>
           <Input
             id="name"
+            name="name"
             type="text"
             placeholder="Your name"
             required
@@ -76,6 +72,7 @@ export default function ContactForm() {
           </label>
           <Input
             id="email"
+            name="email"
             type="email"
             placeholder="Your email"
             required
@@ -89,6 +86,7 @@ export default function ContactForm() {
           </label>
           <Textarea
             id="message"
+            name="message"
             placeholder="Your message"
             required
             className="bg-vaporwave-dark/50 border-vaporwave-pink/30 focus:border-vaporwave-pink focus:ring-vaporwave-pink/30"
