@@ -58,7 +58,6 @@ export default function ContactForm() {
           </label>
           <Input
             id="name"
-            name="name"
             type="text"
             placeholder="Your name"
             required
@@ -72,7 +71,6 @@ export default function ContactForm() {
           </label>
           <Input
             id="email"
-            name="email"
             type="email"
             placeholder="Your email"
             required
@@ -86,7 +84,6 @@ export default function ContactForm() {
           </label>
           <Textarea
             id="message"
-            name="message"
             placeholder="Your message"
             required
             className="bg-vaporwave-dark/50 border-vaporwave-pink/30 focus:border-vaporwave-pink focus:ring-vaporwave-pink/30"
