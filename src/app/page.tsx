@@ -130,19 +130,19 @@ export default function Home() {
               <ProjectCard
                 title="POV Classification in Sentences"
                 description="A BERT-based deep learning model for multi-class Point of View (POV) classification in literary texts, achieving 65% accuracy."
-                link="https://github.com/nlemoff/pov-classification"
+                link="https://github.com/nlemoff/POV-Classification-in-Sentences"
                 tags={["BERT", "NLP", "Deep Learning", "Python"]}
               />
               <ProjectCard
                 title="Titanic Survival Prediction"
                 description="Led a UC Berkeley-hosted Kaggle competition team, focusing on predicting Titanic passenger survival with 80% accuracy."
-                link="https://github.com/nlemoff/titanic-prediction"
+                link="https://github.com/nlemoff/Titanic-Survival-Prediction"
                 tags={["Kaggle", "Machine Learning", "Python", "Data Science"]}
               />
               <ProjectCard
                 title="Earnings Predictions for College Graduates"
                 description="Analyzed the interplay between college majors, gender, and earnings, to shed light on the gender wage gap's influence in early career stages."
-                link="https://github.com/nlemoff/earnings-prediction"
+                link="https://github.com/nlemoff/Earnings-Predictions-for-College-Graduates"
                 tags={["Data Analysis", "Prediction Models", "Python"]}
               />
             </div>
