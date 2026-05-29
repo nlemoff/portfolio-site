@@ -61,7 +61,7 @@ export default function ContactForm() {
             type="text"
             placeholder="Your name"
             required
-            className="bg-vaporwave-dark/50 border-vaporwave-pink/30 focus:border-vaporwave-pink focus:ring-vaporwave-pink/30"
+            className="bg-white/80 border-vaporwave-pink/40 text-slate-900 placeholder:text-slate-500 focus:border-vaporwave-pink focus:ring-vaporwave-pink/30 dark:bg-vaporwave-dark/50 dark:text-white dark:placeholder:text-slate-400"
             {...register("name")}
           />
         </div>
@@ -74,7 +74,7 @@ export default function ContactForm() {
             type="email"
             placeholder="Your email"
             required
-            className="bg-vaporwave-dark/50 border-vaporwave-pink/30 focus:border-vaporwave-pink focus:ring-vaporwave-pink/30"
+            className="bg-white/80 border-vaporwave-pink/40 text-slate-900 placeholder:text-slate-500 focus:border-vaporwave-pink focus:ring-vaporwave-pink/30 dark:bg-vaporwave-dark/50 dark:text-white dark:placeholder:text-slate-400"
             {...register("email")}
           />
         </div>
@@ -86,7 +86,7 @@ export default function ContactForm() {
             id="message"
             placeholder="Your message"
             required
-            className="bg-vaporwave-dark/50 border-vaporwave-pink/30 focus:border-vaporwave-pink focus:ring-vaporwave-pink/30"
+            className="bg-white/80 border-vaporwave-pink/40 text-slate-900 placeholder:text-slate-500 focus:border-vaporwave-pink focus:ring-vaporwave-pink/30 dark:bg-vaporwave-dark/50 dark:text-white dark:placeholder:text-slate-400"
             {...register("message")}
           />
         </div>

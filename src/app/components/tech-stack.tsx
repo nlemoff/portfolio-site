@@ -71,7 +71,7 @@ export default function TechStack() {
             {tech.skills.map((skill) => (
               <span
                 key={skill}
-                className="inline-flex items-center rounded-md bg-vaporwave-dark px-2 py-1 text-sm font-medium text-vaporwave-pink ring-1 ring-inset ring-vaporwave-pink/30 hover:ring-vaporwave-pink/60 transition-colors"
+                className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-sm font-medium text-fuchsia-700 ring-1 ring-inset ring-vaporwave-pink/30 hover:ring-vaporwave-pink/60 transition-colors dark:bg-vaporwave-dark dark:text-vaporwave-pink"
               >
                 {skill}
               </span>

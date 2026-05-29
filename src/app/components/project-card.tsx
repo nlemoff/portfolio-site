@@ -29,12 +29,12 @@ export default function ProjectCard({ title, description, link, linkLabel = "Vie
             </Link>
           ) : null}
         </div>
-        <p className="text-sm text-gray-300 mb-4">{description}</p>
+        <p className="text-sm text-slate-700 dark:text-gray-300 mb-4">{description}</p>
         <div className="flex flex-wrap gap-2">
           {tags.map((tag) => (
             <span
               key={tag}
-              className="inline-flex items-center rounded-md bg-vaporwave-dark px-2 py-1 text-xs font-medium text-vaporwave-pink ring-1 ring-inset ring-vaporwave-pink/30"
+              className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-fuchsia-700 ring-1 ring-inset ring-vaporwave-pink/30 dark:bg-vaporwave-dark dark:text-vaporwave-pink"
             >
               {tag}
             </span>

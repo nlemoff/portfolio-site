@@ -45,7 +45,7 @@ export default function Home() {
                 <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none gradient-text animate-gradient">
                   Nick Lemoff
                 </h1>
-                <p className="mx-auto max-w-[760px] text-gray-400 md:text-xl dark:text-gray-300">
+                <p className="mx-auto max-w-[760px] text-slate-700 md:text-xl dark:text-gray-300">
                   Founding engineer focused on applied AI research and full-stack product engineering. I turn papers, open-source systems, and fast prototypes into production agents, retrieval systems, eval harnesses, and user-facing software.
                 </p>
               </div>
@@ -171,7 +171,7 @@ export default function Home() {
 
       <footer className="border-t border-vaporwave-pink/20">
         <div className="container flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6">
-          <p className="text-xs text-gray-400 dark:text-gray-300">© 2026 Nick Lemoff. All rights reserved.</p>
+          <p className="text-xs text-slate-600 dark:text-gray-300">© 2026 Nick Lemoff. All rights reserved.</p>
         </div>
       </footer>
     </div>

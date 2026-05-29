@@ -92,7 +92,7 @@ export default function Experience() {
             <p className="font-medium mb-2 text-vaporwave-purple">{exp.position}</p>
             <ul className="list-disc pl-5 space-y-1">
               {exp.responsibilities.map((resp, idx) => (
-                <li key={idx} className="text-sm text-gray-300">
+                <li key={idx} className="text-sm text-slate-700 dark:text-gray-300">
                   {resp}
                 </li>
               ))}
