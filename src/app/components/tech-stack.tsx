@@ -2,37 +2,58 @@ import { Card } from "@/components/ui/card"
 
 const technologies = [
   {
-    category: "Programming Languages",
-    skills: ["Python", "Java", "C/C++", "R", "SQL", "HTML/CSS", "TypeScript", "Go", "MATLAB"],
+    category: "Languages",
+    skills: ["Python", "TypeScript", "JavaScript", "SQL", "C/C++", "Java", "Go", "R"],
   },
   {
-    category: "Data Science & ML",
+    category: "AI / ML / research",
     skills: [
-      "Pandas",
-      "NumPy",
-      "TensorFlow",
+      "LLM agents",
+      "Real-time agents",
+      "Agent memory",
+      "Hybrid RAG",
+      "Retrieval/reranking",
+      "Vertex AI Search",
+      "Eval harnesses",
+      "Replay testing",
+      "Prompt/system design",
       "PyTorch",
-      "Keras",
+      "TensorFlow",
       "scikit-learn",
-      "Deep Learning",
-      "Computer Vision",
+      "Computer vision",
       "NLP",
+      "Literature review",
+      "Rapid prototyping",
     ],
   },
   {
-    category: "Databases & Tools",
-    skills: ["MySQL", "PostgreSQL", "MongoDB", "NoSQL", "Docker", "Git", "Jupyter", "Tableau", "Power BI"],
+    category: "Product engineering",
+    skills: [
+      "React",
+      "Vite",
+      "Next.js",
+      "Node.js",
+      "Express",
+      "FastAPI",
+      "PostgreSQL",
+      "Redis",
+      "Socket.IO",
+      "BullMQ",
+      "Prisma",
+      "Tailwind CSS",
+    ],
   },
   {
-    category: "Web & Software",
+    category: "Infrastructure / workflow",
     skills: [
-      "React.js",
-      "Django",
-      "Apache Spark",
-      "Agile",
-      "Software Testing",
-      "Data Structures & Algorithms",
-      "Figma",
+      "Google Cloud",
+      "Docker",
+      "Git/GitHub",
+      "CI/CD",
+      "Playwright",
+      "Jupyter",
+      "Tableau",
+      "Observability",
     ],
   },
 ]
@@ -61,4 +82,3 @@ export default function TechStack() {
     </div>
   )
 }
-

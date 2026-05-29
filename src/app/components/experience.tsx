@@ -2,15 +2,30 @@ import { Card, CardContent } from "@/components/ui/card"
 
 const experiences = [
   {
+    company: "Full Proof",
+    location: "San Francisco, CA / Remote",
+    position: "Founding Engineer",
+    period: "March 2025 - Present",
+    responsibilities: [
+      "Architected Evie, Full Proof's real-time deposition agent, from a demo spread across disconnected services into a unified GCP-backed production system for live transcript processing, document-grounded reasoning, attorney-facing suggestions, and deposition-prep workflows.",
+      "Owned Full Proof's applied AI research loop: papers, open-source systems, model releases, and hundreds of prototypes across agent memory, real-time agents, hybrid RAG, retrieval/reranking, tool use, long-context workflows, and eval methodology.",
+      "Productionized research ideas into a Python/FastAPI agent service with streaming endpoints for live transcript lines, chat/RAG, document extraction, strategy generation, outline generation, tracker summaries, persistent case memory, and final-round deposition workflows.",
+      "Designed real-time agent orchestration that records transcript state, routes each line through research / quick-check / suppression paths, and returns citation-backed tactical suggestions with timing, route, usage, and tool-call traces.",
+      "Built document-grounded retrieval over case files with Vertex AI Search / Discovery Engine, case-scoped filtering, dynamic exhibit mapping, caching, concurrency controls, source-identity observability, and fail-closed behavior for unsupported evidence.",
+      "Created replay/evaluation infrastructure for AI reliability: transcript replays, browser-projected agent output, service health snapshots, event logs, line-level lifecycle traces, scoring, and regression coverage.",
+      "Shipped across React/Vite, TypeScript, Node/Express, Python, FastAPI, PostgreSQL, Prisma, Redis, Socket.IO, BullMQ, Vertex AI Search, and Google Cloud.",
+    ],
+  },
+  {
     company: "Formula SAE Electric at Berkeley",
-    location: "Berkeley, CA, USA",
+    location: "Berkeley, CA",
     position: "Simulations Team Lead",
     period: "May 2024 - January 2025",
     responsibilities: [
-      "Built and managed a diverse team of 25+ members across 7 projects, designing team infrastructure to meet the demands of UC Berkeley's largest engineering club.",
-      "Oversaw the development of an advanced lap time simulator utilizing a two-track bicycle model and implemented robust Git/GitHub version control practices.",
-      "Led critical aerodynamic analysis, engineering a pipeline integrating CAN data and simulations.",
-      "Spearheaded migration to Docker containerization for simulation environments, standardizing development dependencies across 25+ team members and achieving a 40% increase in team productivity.",
+      "Led a 25+ person simulations team across 7 vehicle-modeling projects for UC Berkeley's Formula SAE electric racecar team.",
+      "Developed a lap-time simulator using a two-track bicycle model and introduced Git/GitHub workflows for a larger engineering contributor base.",
+      "Built aerodynamic and vehicle-analysis pipelines that connected CAN data with simulation outputs.",
+      "Containerized simulation environments with Docker so contributors could work from a consistent setup.",
     ],
   },
   {
@@ -19,40 +34,41 @@ const experiences = [
     position: "Research Intern",
     period: "January 2024 - August 2024",
     responsibilities: [
-      "Conducted extensive literature review of state-of-the-art graph edit distance algorithms for NIST's materials science mapping project.",
-      "Engineered optimized graph edit distance algorithm using Python and C++ for mapping inorganic materials datasets, achieving 20% faster computation while maintaining accuracy.",
+      "Implemented optimized graph edit distance code in Python and C++ for inorganic materials datasets after reviewing core algorithmic approaches.",
+      "Contributed to a long-running materials-science project embedding 167,500 ICSD entries into a structural-similarity space to study experimental discovery, computed materials proposals, and synthesizability priors.",
+      "Reviewed and merged multiple PRs to make the latest research code reproducible and runnable on other machines ahead of the group's Nature submission.",
     ],
   },
   {
     company: "Lawrence Berkeley National Laboratory",
-    location: "Berkeley, CA, USA",
+    location: "Berkeley, CA",
     position: "Machine Learning Student Assistant",
     period: "September 2023 - August 2024",
     responsibilities: [
-      "Developed Faster R-CNN and YOLOv8 computer vision models to detect oil and gas wells in historical maps, achieving 0.98 mAP in under 5 minutes of training.",
-      "Conducted academic literature review and in-depth analysis of over 20 different Convolutional Neural Network (CNN) architectures.",
-      "Co-authored an abstract submitted to AGU 2024, showcasing the innovative object detection approach.",
+      "Developed Faster R-CNN and YOLOv8 models to detect oil and gas wells in historical maps, reaching 0.98 mAP in under 5 minutes of training.",
+      "Reviewed and compared 20+ CNN architectures for historical-map object detection.",
+      "Co-authored an abstract submitted to AGU 2024 on the object-detection approach.",
     ],
   },
   {
     company: "Mojo Vision",
-    location: "Saratoga, CA, USA",
+    location: "Saratoga, CA",
     position: "Data Science and Data Management Intern",
     period: "July 2023 - June 2024",
     responsibilities: [
-      "Designed a sophisticated data infrastructure for quantum dot life tests using Python, and MySQL, adopted as the standard data processing pipeline for the entire company.",
-      "Built Tableau dashboards for visualizing quantum dot data, speeding up data validation workflow by 40%.",
-      "Implemented a program using Python and SQLAlchemy that autonomously monitors and reports issues in company MySQL database.",
+      "Designed Python/MySQL data pipelines for quantum dot life tests that became the company's standard processing workflow.",
+      "Built Tableau dashboards for quantum dot validation data and reduced manual review work.",
+      "Wrote Python and SQLAlchemy monitoring code to detect and report issues in company MySQL databases.",
     ],
   },
   {
     company: "Formula SAE Electric at Berkeley",
-    location: "Berkeley, CA, USA",
-    position: "Simulations Engineer - Data Scientist",
+    location: "Berkeley, CA",
+    position: "Simulations Engineer / Data Scientist",
     period: "February 2024 - May 2024",
     responsibilities: [
-      "Developed a tire model using Tire Testing Consortium data, pandas, and scikit-learn, optimizing parameters for the following year's car.",
-      "Created a process for sizing the car's battery pack, integrating sizing constraints, weight considerations, and lap time.",
+      "Developed a tire model using Tire Testing Consortium data, pandas, and scikit-learn to guide next-year vehicle parameters.",
+      "Created a battery-pack sizing process that balanced sizing constraints, weight, and lap-time impact.",
     ],
   },
 ]
@@ -87,4 +103,3 @@ export default function Experience() {
     </div>
   )
 }
-
