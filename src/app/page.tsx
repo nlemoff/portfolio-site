@@ -8,19 +8,20 @@ import ProjectCard from "./components/project-card"
 import TechStack from "./components/tech-stack"
 import Experience from "./components/experience"
 import Education from "./components/education"
+import MoreAboutMe from "./components/more-about-me"
 import { ThemeToggle } from "@/components/theme-toggle"
 import NavLink from "./components/nav-link"
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-background retro-grid">
-      <div className="fixed inset-0 bg-vaporwave-gradient opacity-5 pointer-events-none"></div>
+      <div className="fixed inset-0 bg-vaporwave-pink/5 pointer-events-none"></div>
 
       <header className="sticky top-0 z-50 w-full border-b border-vaporwave-pink/20 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 items-center">
           <div className="mr-4 hidden md:flex">
             <Link className="mr-6 flex items-center space-x-2" href="/">
-              <span className="hidden font-bold sm:inline-block gradient-text">Nick Lemoff</span>
+              <span className="hidden font-bold text-vaporwave-teal sm:inline-block">Nick Lemoff</span>
             </Link>
             <nav className="flex items-center space-x-6 text-sm font-medium">
               <NavLink href="#about">About</NavLink>
@@ -28,6 +29,7 @@ export default function Home() {
               <NavLink href="#experience">Experience</NavLink>
               <NavLink href="#projects">Projects</NavLink>
               <NavLink href="#skills">Skills</NavLink>
+              <NavLink href="#more-about-me">More About Me</NavLink>
               <NavLink href="#contact">Contact</NavLink>
             </nav>
           </div>
@@ -42,7 +44,7 @@ export default function Home() {
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
-                <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none gradient-text animate-gradient">
+                <h1 className="text-3xl font-bold tracking-tighter text-vaporwave-teal sm:text-4xl md:text-5xl lg:text-6xl/none">
                   Nick Lemoff
                 </h1>
                 <p className="mx-auto max-w-[760px] text-slate-700 md:text-xl dark:text-gray-300">
@@ -93,7 +95,7 @@ export default function Home() {
 
         <section id="education" className="py-12 md:py-24 lg:py-32">
           <div className="container px-4 md:px-6">
-            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl mb-12 text-center gradient-text">
+            <h2 className="text-3xl font-bold tracking-tighter text-vaporwave-blue sm:text-4xl md:text-5xl mb-12 text-center">
               Education
             </h2>
             <Education />
@@ -102,7 +104,7 @@ export default function Home() {
 
         <section id="experience" className="py-12 md:py-24 lg:py-32">
           <div className="container px-4 md:px-6">
-            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl mb-12 text-center gradient-text">
+            <h2 className="text-3xl font-bold tracking-tighter text-vaporwave-blue sm:text-4xl md:text-5xl mb-12 text-center">
               Professional Experience
             </h2>
             <Experience />
@@ -111,12 +113,12 @@ export default function Home() {
 
         <section id="projects" className="py-12 md:py-24 lg:py-32">
           <div className="container px-4 md:px-6">
-            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl mb-12 text-center gradient-text">
+            <h2 className="text-3xl font-bold tracking-tighter text-vaporwave-blue sm:text-4xl md:text-5xl mb-12 text-center">
               Projects
             </h2>
             <div className="max-w-4xl mx-auto space-y-6">
               <ProjectCard
-                title="Evie — Full Proof's real-time deposition agent"
+                title="Evie — FullProof's real-time deposition agent"
                 description="Architected the production AI agent system described in my resume: a GCP-backed real-time agent with FastAPI streaming endpoints, hybrid RAG over case documents, agent memory, live transcript orchestration, citation-grounded outputs, and replay/eval infrastructure."
                 tags={["Real-time agents", "Hybrid RAG", "FastAPI", "React", "TypeScript", "PostgreSQL", "Redis", "Google Cloud"]}
               />
@@ -150,17 +152,26 @@ export default function Home() {
 
         <section id="skills" className="py-12 md:py-24 lg:py-32">
           <div className="container px-4 md:px-6">
-            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl mb-12 text-center gradient-text">
+            <h2 className="text-3xl font-bold tracking-tighter text-vaporwave-blue sm:text-4xl md:text-5xl mb-12 text-center">
               Skills
             </h2>
             <TechStack />
           </div>
         </section>
 
+        <section id="more-about-me" className="py-12 md:py-24 lg:py-32">
+          <div className="container px-4 md:px-6">
+            <h2 className="text-3xl font-bold tracking-tighter text-vaporwave-blue sm:text-4xl md:text-5xl mb-12 text-center">
+              More About Me
+            </h2>
+            <MoreAboutMe />
+          </div>
+        </section>
+
         <section id="contact" className="py-12 md:py-24 lg:py-32">
           <div className="container px-4 md:px-6">
             <div className="mx-auto max-w-2xl">
-              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl mb-12 text-center gradient-text">
+              <h2 className="text-3xl font-bold tracking-tighter text-vaporwave-blue sm:text-4xl md:text-5xl mb-12 text-center">
                 Get in Touch
               </h2>
               <ContactForm />
@@ -177,4 +188,3 @@ export default function Home() {
     </div>
   )
 }
-

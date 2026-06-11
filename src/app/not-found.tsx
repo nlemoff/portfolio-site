@@ -7,7 +7,7 @@ export default function NotFound() {
       <p className="text-xl mb-8">Could not find the requested page</p>
       <Link
         href="/"
-        className="px-6 py-3 bg-vaporwave-gradient text-white rounded-lg hover:opacity-90 transition-opacity"
+        className="px-6 py-3 bg-vaporwave-pink text-vaporwave-dark rounded-lg hover:bg-vaporwave-pink/90 transition-colors"
       >
         Return Home
       </Link>

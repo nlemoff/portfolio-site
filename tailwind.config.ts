@@ -58,9 +58,6 @@ const config: Config = {
         "vaporwave-teal": "#05ffa1",
         "vaporwave-dark": "#1a1a1a",
       },
-      backgroundImage: {
-        "vaporwave-gradient": "linear-gradient(45deg, #ff71ce, #01cdfe, #05ffa1)",
-      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
@@ -72,4 +69,3 @@ const config: Config = {
 }
 
 export default config
-

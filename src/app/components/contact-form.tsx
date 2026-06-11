@@ -92,7 +92,7 @@ export default function ContactForm() {
         </div>
         <Button
           type="submit"
-          className="w-full bg-vaporwave-gradient hover:opacity-90 text-white border-none"
+          className="w-full bg-vaporwave-pink text-vaporwave-dark hover:bg-vaporwave-pink/90 border-none"
           disabled={pending || isSubmitting}
         >
           {pending ? "Sending..." : "Send Message"}
@@ -106,4 +106,3 @@ export default function ContactForm() {
     </Card>
   )
 }
-

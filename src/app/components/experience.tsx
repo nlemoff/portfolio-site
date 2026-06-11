@@ -2,13 +2,13 @@ import { Card, CardContent } from "@/components/ui/card"
 
 const experiences = [
   {
-    company: "Full Proof",
+    company: "FullProof",
     location: "San Francisco, CA / Remote",
     position: "Founding Engineer",
     period: "March 2025 - Present",
     responsibilities: [
-      "Architected Evie, Full Proof's real-time deposition agent, from a demo spread across disconnected services into a unified GCP-backed production system for live transcript processing, document-grounded reasoning, attorney-facing suggestions, and deposition-prep workflows.",
-      "Owned Full Proof's applied AI research loop: papers, open-source systems, model releases, and hundreds of prototypes across agent memory, real-time agents, hybrid RAG, retrieval/reranking, tool use, long-context workflows, and eval methodology.",
+      "Architected Evie, FullProof's real-time deposition agent, from a demo spread across disconnected services into a unified GCP-backed production system for live transcript processing, document-grounded reasoning, attorney-facing suggestions, and deposition-prep workflows.",
+      "Owned FullProof's applied AI research loop: papers, open-source systems, model releases, and hundreds of prototypes across agent memory, real-time agents, hybrid RAG, retrieval/reranking, tool use, long-context workflows, and eval methodology.",
       "Productionized research ideas into a Python/FastAPI agent service with streaming endpoints for live transcript lines, chat/RAG, document extraction, strategy generation, outline generation, tracker summaries, persistent case memory, and final-round deposition workflows.",
       "Designed real-time agent orchestration that records transcript state, routes each line through research / quick-check / suppression paths, and returns citation-backed tactical suggestions with timing, route, usage, and tool-call traces.",
       "Built document-grounded retrieval over case files with Vertex AI Search / Discovery Engine, case-scoped filtering, dynamic exhibit mapping, caching, concurrency controls, source-identity observability, and fail-closed behavior for unsupported evidence.",

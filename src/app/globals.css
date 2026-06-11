@@ -95,33 +95,7 @@
   border-color: #0369a1;
 }
 
-.light .gradient-text,
-:root:not(.dark) .gradient-text {
-  background-image: linear-gradient(45deg, #be185d, #0369a1, #047857);
-}
-
 .dark .vaporwave-card {
   background: var(--card);
   box-shadow: none;
-}
-
-.gradient-text {
-  @apply bg-clip-text text-transparent bg-vaporwave-gradient;
-}
-
-.animate-gradient {
-  background-size: 200%;
-  animation: gradient 8s linear infinite;
-}
-
-@keyframes gradient {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
 }
