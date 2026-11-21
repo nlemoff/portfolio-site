@@ -3,173 +3,168 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Range 06 Aim Trainer</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Ccircle cx=%228%22 cy=%228%22 r=%226%22 fill=%22%233be8ff%22/%3E%3C/svg%3E">
+<title>Aim Trainer</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 8 8%22 shape-rendering=%22crispEdges%22%3E%3Cpath d=%22M2 0h4v1h1v1h1v4H7v1H6v1H2V7H1V6H0V2h1V1h1z%22 fill=%22%230d0b1a%22/%3E%3Cpath d=%22M2 1h4v1h1v4H6v1H2V6H1V2h1z%22 fill=%22%23ffb612%22/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&family=Silkscreen&display=swap" rel="stylesheet">
 <script type="importmap">{"imports":{"three":"/games/vendor/three.module.min.js"}}</script>
 <style>
 :root{
-  --bg:#07090d; --panel:rgba(12,16,22,.9); --panel2:rgba(20,26,34,.92); --line:rgba(140,170,200,.14); --line2:rgba(140,170,200,.26);
-  --text:#e6edf3; --dim:#8b98a7; --faint:#56616e; --accent:#3be8ff; --gold:#ffb612; --good:#4dff8a; --bad:#ff4d5e;
-  --head:'Chakra Petch', system-ui, sans-serif; --mono:'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --ink:#0d0b1a; --n0:#161a3a; --n1:#222b5c; --n2:#33438a; --n3:#4f69b5; --n4:#86a2dc; --n5:#c4d4f2;
+  --cream:#fffaf0; --cream2:#efe2c0; --cream3:#d4bc8e; --gold0:#b5821a; --gold:#ffb612; --gold2:#ffe08a;
+  --red0:#9a2430; --red:#d9483b; --steel:#a7abbe;
+  --f:'Pixelify Sans', ui-monospace, monospace; --d:'Silkscreen', ui-monospace, monospace;
 }
+/* everything is sized in rem; the root scales with the frame so the UI reads at 360x225 and stays sane at full screen */
+html{font-size:clamp(9px, min(2.2vw, 3.6vh), 18px)}
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:hidden;font-family:var(--head);-webkit-font-smoothing:antialiased}
-#app{position:fixed;inset:0;overflow:hidden;background:var(--bg);user-select:none;-webkit-user-select:none}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--cream);overflow:hidden;font-family:var(--f);font-weight:500}
+#app{position:fixed;inset:0;overflow:hidden;background:var(--ink);user-select:none;-webkit-user-select:none}
 #gl,#xh{position:absolute;inset:0;width:100%;height:100%;display:block}
 #xh{pointer-events:none;z-index:3}
-button{font:inherit;color:inherit;cursor:pointer}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
 .hidden{display:none!important}
-.overlay{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column}
-.mono{font-family:var(--mono)}
+i,em{font-style:normal}
+/* digits: Silkscreen, because Pixelify's 3/8 and 5/S read alike */
+.d,.inp[type=number],.hs b,#hCount,.pop,.rscore,.stats b,.readout b,table.conv td.n,table.conv td.e,.rng output{font-family:var(--d);font-weight:400}
+.d small,.stats b small,.readout b small,.hs b small{font-family:var(--f);font-weight:500}
+.ov{position:absolute;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;padding:max(3rem,40px) 1rem 1rem}
+.dim{background:rgba(13,11,26,.6)}
 
-/* ---------- HUD ---------- */
-#hud{position:absolute;inset:0;z-index:4;pointer-events:none;font-family:var(--mono)}
-#hud .timer{position:absolute;top:14px;left:50%;transform:translateX(-50%);text-align:center}
-#hud .timer b{display:block;font-size:clamp(20px,3.6vmin,34px);font-weight:700;letter-spacing:.04em;text-shadow:0 2px 12px rgba(0,0,0,.6)}
-#hud .timer i{display:block;height:3px;width:clamp(120px,22vw,240px);background:rgba(255,255,255,.1);margin-top:6px;border-radius:2px;overflow:hidden}
-#hud .timer i s{display:block;height:100%;background:var(--accent);transform-origin:left;text-decoration:none}
-#hud .stat{position:absolute;top:16px;font-size:clamp(11px,1.7vmin,14px);color:var(--dim);line-height:1.5;text-shadow:0 1px 6px rgba(0,0,0,.7)}
-#hud .stat b{color:var(--text);font-size:1.5em;font-weight:700;display:block;letter-spacing:.02em}
-#hud .left{left:18px}
-#hud .right{right:18px;text-align:right}
-#hud .streak{position:absolute;left:50%;top:74px;transform:translateX(-50%);font-size:12px;color:var(--gold);letter-spacing:.2em;opacity:0;transition:opacity .2s}
-#hud .count{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--head);font-weight:700;font-size:clamp(60px,16vmin,150px);color:#fff;text-shadow:0 0 40px rgba(59,232,255,.5);opacity:0}
-#hud .fps{position:absolute;left:8px;bottom:6px;font-size:11px;color:var(--faint)}
-#hud .modetag{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:11px;letter-spacing:.24em;color:var(--faint)}
-.pop{position:absolute;left:50%;top:50%;font-family:var(--mono);font-weight:700;font-size:13px;color:#fff;pointer-events:none;transform:translate(18px,-26px);animation:pop .7s ease-out forwards;text-shadow:0 1px 6px rgba(0,0,0,.8)}
-@keyframes pop{0%{opacity:1;transform:translate(18px,-20px) scale(1.15)}100%{opacity:0;transform:translate(26px,-58px) scale(1)}}
+/* panel + buttons */
+.panel{background:var(--n0);border:3px solid var(--ink);box-shadow:inset 0 0 0 2px var(--n2),6px 6px 0 var(--ink);padding:1.1rem 1.3rem;max-width:100%;max-height:100%}
+.btn{font-weight:600;font-size:1rem;line-height:1;color:var(--ink);background:var(--cream2);border:3px solid var(--ink);box-shadow:3px 3px 0 var(--ink);padding:.45rem .8rem;min-height:2.2rem;border-radius:0;white-space:nowrap}
+.btn:hover{background:var(--cream)}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.btn.go{background:var(--gold);font-weight:700;padding:.45rem 1.4rem}
+.btn.go:hover{background:var(--gold2)}
+.btn[aria-pressed=true]{background:var(--gold)}
+.btn.sm{font-size:.85rem;min-height:1.7rem;padding:.25rem .5rem;border-width:2px;box-shadow:2px 2px 0 var(--ink)}
+.btn:focus-visible,.ib:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
+.row{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+.kc{display:inline-block;min-width:1.7em;text-align:center;padding:.15rem .35rem;margin-right:.3rem;background:var(--cream2);color:var(--ink);border:2px solid var(--ink);box-shadow:0 2px 0 var(--ink);font-size:.85rem;line-height:1}
+.keys{display:flex;gap:.4rem 1rem;flex-wrap:wrap;color:var(--n5);font-size:.9rem}
+.dimt{color:var(--steel)}
+.num{font-variant-numeric:tabular-nums}
 
-/* ---------- menu ---------- */
-#menu{background:linear-gradient(180deg,rgba(7,9,13,.6),rgba(7,9,13,.35) 45%,rgba(7,9,13,.9))}
-.top{display:flex;align-items:center;gap:12px;padding:12px clamp(12px,2.4vw,28px);border-bottom:1px solid var(--line)}
-.logo{display:flex;align-items:baseline;gap:10px;white-space:nowrap}
-.logo b{font-size:clamp(17px,2.6vmin,24px);font-weight:700;letter-spacing:.06em}
-.logo b em{font-style:normal;color:var(--accent)}
-.logo span{font-size:11px;color:var(--dim);letter-spacing:.22em;text-transform:uppercase}
-@media (max-width:720px){.logo span{display:none}.mode{min-height:0}.mode p{font-size:11.5px}}
-.tabs{display:flex;gap:2px;margin:0 auto;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:8px;padding:3px}
-.tabs button{background:none;border:0;padding:7px clamp(8px,1.4vw,16px);font-size:12px;font-weight:600;letter-spacing:.16em;color:var(--dim);border-radius:6px}
-.tabs button:hover{color:var(--text)}
-.tabs button.on{background:rgba(59,232,255,.12);color:var(--accent)}
-.icons{display:flex;gap:6px}
-.ibtn{width:34px;height:34px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.03);display:grid;place-items:center;color:var(--dim)}
-.ibtn:hover{color:var(--text);border-color:var(--line2)}
-.ibtn.on{color:var(--accent);border-color:rgba(59,232,255,.4)}
-.ibtn svg{width:16px;height:16px}
-.body{flex:1;overflow:auto;padding:clamp(12px,2.4vmin,24px) clamp(12px,2.4vw,28px)}
-.body::-webkit-scrollbar{width:8px}.body::-webkit-scrollbar-thumb{background:var(--line2);border-radius:4px}
-.wrap{max-width:1040px;margin:0 auto}
-.foot{display:flex;align-items:center;gap:14px;padding:12px clamp(12px,2.4vw,28px);border-top:1px solid var(--line);background:rgba(7,9,13,.6)}
-.foot .sum{flex:1;font-family:var(--mono);font-size:12px;color:var(--dim);line-height:1.5;min-width:0}
-.foot .sum b{color:var(--text)}
-.foot .sum .raw-on{color:var(--good)}.foot .sum .raw-off{color:var(--gold)}
-.start{background:var(--accent);color:#031015;border:0;border-radius:8px;padding:11px 26px;font-weight:700;letter-spacing:.2em;font-size:14px;box-shadow:0 0 0 0 rgba(59,232,255,.5);transition:transform .1s,box-shadow .2s}
-.start:hover{box-shadow:0 0 24px rgba(59,232,255,.45)}
-.start:active{transform:scale(.97)}
-.modes{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
-.mode{position:relative;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 14px 12px;min-height:128px;display:flex;flex-direction:column;gap:6px;transition:border-color .15s,transform .15s,background .15s}
-.mode:hover{border-color:var(--line2);transform:translateY(-2px)}
-.mode.on{border-color:var(--accent);background:linear-gradient(180deg,rgba(59,232,255,.09),rgba(12,16,22,.92))}
-.mode .k{font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.1em}
-.mode h3{margin:0;font-size:17px;letter-spacing:.12em}
-.mode p{margin:0;font-size:12.5px;line-height:1.4;color:var(--dim);font-family:system-ui,sans-serif;flex:1}
-.mode .best{font-family:var(--mono);font-size:11px;color:var(--faint)}
-.mode .best b{color:var(--gold);font-weight:600}
-.mode svg.glyph{position:absolute;right:12px;top:12px;width:26px;height:26px;opacity:.5}
-.mode.on svg.glyph{opacity:1}
-.hint{margin-top:14px;font-size:12px;color:var(--faint);font-family:var(--mono);line-height:1.7}
-.hint kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line2);border-bottom-width:2px;border-radius:4px;padding:1px 6px;color:var(--dim);background:rgba(255,255,255,.03)}
+/* corner cluster: same spot in every screen */
+#corner{position:absolute;top:.6rem;right:.6rem;z-index:20;display:flex;gap:.4rem}
+.ib{width:max(28px,2.1rem);height:max(28px,2.1rem);display:grid;place-items:center;padding:0;background:var(--ink);color:var(--cream2);border:3px solid var(--cream2);box-shadow:3px 3px 0 var(--ink);border-radius:0}
+.ib:hover{color:var(--gold2);border-color:var(--cream)}
+.ib:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.ib svg{width:58%;height:58%;display:block}
+.ib[aria-pressed=true]{color:var(--gold)}
+/* tiny frames (phone embed ~252x189): drop the extras, keep name, mode, start */
+@media (max-height:260px), (max-width:300px){
+  .ov{padding:38px .5rem .4rem}
+  .keys,#tSens,.best{display:none}
+  #title .panel>.startrow,#title .panel>.sensrow{flex:0 0 auto;margin-top:.6rem}
+  .lead{margin:.3rem 0 .5rem;font-size:.95rem}
+  .modes{margin-bottom:0;gap:.35rem}
+  .modes .btn,.btn.sm{font-size:.9rem;min-height:1.7rem;padding:.2rem .45rem;border-width:2px;box-shadow:2px 2px 0 var(--ink)}
+  .btn.go{min-height:1.9rem;padding:.3rem .9rem}
+  #title .panel,.card,#results .panel{padding:.6rem .8rem}
+  h1{font-size:1.9rem}
+  .rscore{font-size:2.3rem}
+  .stats{margin:.5rem 0 .6rem}
+}
 
-.cols{display:grid;grid-template-columns:minmax(260px,360px) 1fr;gap:16px;align-items:start}
-@media (max-width:760px){.cols{grid-template-columns:1fr}}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
-.card h4{margin:0 0 12px;font-size:11px;letter-spacing:.24em;color:var(--dim);font-weight:600}
-.field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
-.field label{font-size:11px;color:var(--dim);letter-spacing:.12em;text-transform:uppercase}
-.field .row{display:flex;gap:8px;align-items:center}
-input[type=number],input[type=text],select{background:#0b0f15;border:1px solid var(--line2);color:var(--text);border-radius:7px;padding:9px 10px;font-family:var(--mono);font-size:14px;width:100%;outline:none}
-input:focus,select:focus{border-color:var(--accent)}
-select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),linear-gradient(135deg,var(--dim) 50%,transparent 50%);background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;background-size:5px 5px;background-repeat:no-repeat;padding-right:28px;font-family:var(--head);font-size:14px}
-.chips{display:flex;gap:6px;flex-wrap:wrap}
-.chip{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:6px;padding:5px 9px;font-family:var(--mono);font-size:12px;color:var(--dim)}
-.chip:hover{color:var(--text);border-color:var(--line2)}
-.chip.on{color:var(--accent);border-color:rgba(59,232,255,.5)}
-.readout{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
-.readout div{background:#0a0e13;border:1px solid var(--line);border-radius:8px;padding:10px}
-.readout div.big{grid-column:1/-1;border-color:rgba(59,232,255,.3)}
-.readout small{display:block;font-size:10px;letter-spacing:.2em;color:var(--faint);margin-bottom:4px}
-.readout b{font-family:var(--mono);font-size:17px}
-.readout .big b{font-size:30px;color:var(--accent)}
-.readout .big b span{font-size:14px;color:var(--dim);margin-left:6px}
-.note{font-size:11.5px;color:var(--faint);line-height:1.55;font-family:system-ui,sans-serif;margin-top:10px}
-.note b{color:var(--dim)}
-table.conv{width:100%;border-collapse:collapse;font-size:13px}
-table.conv th{font-size:10px;letter-spacing:.18em;color:var(--faint);text-align:left;font-weight:600;padding:0 8px 8px;border-bottom:1px solid var(--line)}
-table.conv td{padding:9px 8px;border-bottom:1px solid var(--line)}
-table.conv td.n{font-family:var(--mono);text-align:right}
-table.conv th.n{text-align:right}
-table.conv tr.cur td{color:var(--accent)}
-table.conv tr:hover td{background:rgba(255,255,255,.025)}
-table.conv td .tag{font-size:10px;color:var(--faint);font-family:var(--mono);margin-left:6px}
-table.conv button{background:none;border:1px solid var(--line);border-radius:5px;padding:3px 8px;font-size:11px;color:var(--dim)}
-table.conv button:hover{color:var(--text);border-color:var(--line2)}
-.toggle{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--dim);cursor:pointer;margin-bottom:10px}
-.toggle input{appearance:none;width:30px;height:17px;border-radius:9px;background:#1b222c;border:1px solid var(--line2);position:relative;cursor:pointer;margin:0;flex:none}
-.toggle input::after{content:"";position:absolute;width:11px;height:11px;border-radius:50%;background:var(--dim);top:2px;left:2px;transition:left .15s,background .15s}
-.toggle input:checked{background:rgba(59,232,255,.2);border-color:rgba(59,232,255,.5)}
-.toggle input:checked::after{left:15px;background:var(--accent)}
-input[type=range]{width:100%;accent-color:var(--accent)}
-.slider{display:grid;grid-template-columns:96px 1fr 44px;align-items:center;gap:10px;margin-bottom:9px;font-size:12px;color:var(--dim)}
-.slider output{font-family:var(--mono);text-align:right;color:var(--text)}
-.swatches{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
-.sw{width:24px;height:24px;border-radius:6px;border:2px solid transparent;outline:1px solid var(--line2)}
-.sw.on{border-color:#fff}
-input[type=color]{width:30px;height:26px;border:1px solid var(--line2);border-radius:6px;background:none;padding:0;cursor:pointer}
-.xprev{position:relative;height:200px;border-radius:10px;border:1px solid var(--line);overflow:hidden;background:
-  radial-gradient(circle at 50% 50%,rgba(59,232,255,.05),transparent 60%),
-  linear-gradient(rgba(140,170,200,.06) 1px,transparent 1px) 0 0/24px 24px,
-  linear-gradient(90deg,rgba(140,170,200,.06) 1px,transparent 1px) 0 0/24px 24px,#0b1016}
-.xprev canvas{position:absolute;inset:0;width:100%;height:100%}
-.xprev .lt{position:absolute;right:0;top:0;bottom:0;width:50%;background:linear-gradient(180deg,#9aa7b3,#c9d2da)}
-.seg{display:flex;gap:4px;flex-wrap:wrap}
-.seg button{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:6px;padding:6px 10px;font-size:12px;color:var(--dim)}
-.seg button.on{color:var(--accent);border-color:rgba(59,232,255,.5);background:rgba(59,232,255,.08)}
+/* title */
+#title .panel{width:min(100%,38rem);display:flex;flex-wrap:wrap;align-items:center;column-gap:.8rem}
+#title .panel>*{flex:1 1 100%}
+h1{font-weight:700;font-size:2.6rem;line-height:1;margin:0;color:var(--cream);text-shadow:3px 3px 0 var(--ink)}
+.lead{margin:.5rem 0 1rem;font-size:1.05rem;color:var(--n5);min-height:1.3em}
+.modes{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem}
+.startrow{margin-top:1.1rem}
+.best{font-size:1.05rem;color:var(--steel)}
+.best b{color:var(--gold);font-weight:600}
+.sensrow{margin-top:.8rem;font-size:1rem;color:var(--steel)}
 
-/* ---------- pause / results ---------- */
-#pause,#results,#touch,#arm{align-items:center;justify-content:center;background:rgba(5,7,10,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
-.pcard{background:var(--panel2);border:1px solid var(--line2);border-radius:12px;padding:22px 26px;min-width:280px;max-width:min(92%,460px);text-align:center}
-.pcard h2{margin:0 0 4px;letter-spacing:.3em;font-size:20px}
-.pcard p{margin:0 0 16px;color:var(--dim);font-size:13px;font-family:system-ui,sans-serif;line-height:1.5}
-.pcard .btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-.btn2{background:rgba(255,255,255,.04);border:1px solid var(--line2);border-radius:8px;padding:10px 18px;font-weight:600;letter-spacing:.14em;font-size:12px}
-.btn2:hover{border-color:var(--accent);color:var(--accent)}
-.btn2.pri{background:var(--accent);color:#031015;border-color:var(--accent)}
-.btn2.pri:hover{color:#031015;box-shadow:0 0 20px rgba(59,232,255,.4)}
-.res{background:var(--panel2);border:1px solid var(--line2);border-radius:14px;padding:clamp(14px,2.6vmin,24px);width:min(94%,860px);max-height:94%;overflow:auto;display:grid;grid-template-columns:1.1fr 1fr;gap:clamp(12px,2.4vmin,22px)}
-@media (max-width:700px){.res{grid-template-columns:1fr}}
-.res .mt{font-size:11px;letter-spacing:.3em;color:var(--dim)}
-.res .sc{font-family:var(--mono);font-size:clamp(38px,8vmin,64px);font-weight:700;line-height:1.05;margin:4px 0 2px}
-.res .bst{font-family:var(--mono);font-size:12px;color:var(--faint)}
-.res .bst b{color:var(--gold)}
-.res .nb{display:inline-block;margin-left:8px;background:var(--gold);color:#120c00;font-size:10px;font-weight:700;letter-spacing:.2em;padding:3px 7px;border-radius:4px;animation:pulse 1s ease-in-out infinite alternate}
-@keyframes pulse{to{box-shadow:0 0 16px rgba(255,182,18,.7)}}
-.res .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
-.res .grid div{background:#0a0e13;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
-.res .grid small{display:block;font-size:9.5px;letter-spacing:.18em;color:var(--faint);margin-bottom:3px;white-space:nowrap}
-.res .grid b{font-family:var(--mono);font-size:16px}
-.res .sensline{font-family:var(--mono);font-size:11px;color:var(--faint);margin-bottom:12px}
-.res .an{display:flex;flex-direction:column;gap:8px}
-.res .an h5{margin:0;font-size:10px;letter-spacing:.24em;color:var(--dim);font-weight:600}
-.res canvas{width:100%;background:#0a0e13;border:1px solid var(--line);border-radius:8px;display:block}
-#resCanvas{aspect-ratio:1.5}
-#resSpark{height:54px}
-.res .anote{font-size:12px;color:var(--dim);line-height:1.5;font-family:system-ui,sans-serif}
-.res .anote b{color:var(--text)}
-.toast{position:absolute;left:50%;bottom:72px;transform:translateX(-50%);z-index:30;background:var(--panel2);border:1px solid var(--line2);padding:9px 14px;border-radius:8px;font-size:12.5px;color:var(--text);font-family:system-ui,sans-serif;pointer-events:none;opacity:0;transition:opacity .25s}
-.toast.show{opacity:1}
+/* settings */
+#settings .panel{width:min(100%,46rem);height:100%;max-height:34rem;display:flex;flex-direction:column;padding:.8rem 1rem}
+.shead{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:.7rem}
+.shead .sp{flex:1}
+.scroll{flex:1;overflow:auto;overscroll-behavior:contain;padding-right:.3rem}
+.scroll::-webkit-scrollbar{width:8px}.scroll::-webkit-scrollbar-thumb{background:var(--n3)}.scroll::-webkit-scrollbar-track{background:var(--ink)}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:1rem;align-items:start}
+@media (max-width:520px){.cols{grid-template-columns:1fr}}
+h2{font-size:1.05rem;font-weight:600;margin:0 0 .5rem;color:var(--cream)}
+.fld{display:flex;flex-direction:column;gap:.25rem;margin-bottom:.6rem}
+.fld label,.lbl{font-size:.85rem;color:var(--steel)}
+.inp{font-size:1rem;background:var(--ink);color:var(--cream);border:2px solid var(--n3);border-radius:0;padding:.3rem .45rem;width:100%;outline:none}
+.inp:focus{border-color:var(--gold)}
+select.inp{appearance:none;-webkit-appearance:none;padding-right:1.6rem;background:var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 3' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h5v1H4v1H3v1H2V2H1V1H0z' fill='%23ffb612'/%3E%3C/svg%3E") no-repeat right .5rem center/.6rem auto}
+select.inp option{background:var(--n0)}
+.chk{display:flex;align-items:center;gap:.5rem;font-size:.95rem;color:var(--cream2);cursor:pointer;margin:.3rem 0}
+.chk input{appearance:none;-webkit-appearance:none;width:1.05rem;height:1.05rem;margin:0;border:2px solid var(--ink);background:var(--cream2);box-shadow:2px 2px 0 var(--ink);cursor:pointer;flex:none;border-radius:0}
+.chk input:checked{background:var(--gold);box-shadow:inset 0 0 0 2px var(--cream2),2px 2px 0 var(--ink)}
+.readout{background:var(--ink);border:2px solid var(--n2);padding:.5rem .6rem;margin-top:.3rem}
+.readout b{display:block;font-size:1.7rem;color:var(--gold);line-height:1.1}
+.readout b small{font-size:.9rem;color:var(--cream2);font-weight:500;margin-left:.3rem}
+.readout span{font-size:.85rem;color:var(--steel)}
+table.conv{width:100%;border-collapse:collapse;font-size:.95rem}
+table.conv td{padding:.28rem .3rem;border-bottom:2px solid var(--n1)}
+table.conv td.n{text-align:right;font-size:.9rem}
+table.conv td.e{font-size:.7rem;color:var(--steel);text-align:right;white-space:nowrap}
+table.conv tr.cur td{color:var(--gold)}
+table.conv td:last-child{width:1%;text-align:right}
+.note{font-size:.85rem;color:var(--steel);line-height:1.35;margin:.6rem 0 0}
+.note.warn{color:var(--red)}
+.rng{display:grid;grid-template-columns:5.5rem 1fr 2.4rem;align-items:center;gap:.6rem;margin-bottom:.5rem;font-size:.9rem;color:var(--cream2)}
+.rng output{text-align:right;font-variant-numeric:tabular-nums}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:1rem;background:transparent;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:.55rem;background:var(--ink);border:2px solid var(--n3)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:.9rem;height:1.1rem;margin-top:calc(-.275rem - 2px);background:var(--gold);border:2px solid var(--ink)}
+input[type=range]::-moz-range-track{height:.55rem;background:var(--ink);border:2px solid var(--n3)}
+input[type=range]::-moz-range-thumb{width:.9rem;height:1.1rem;background:var(--gold);border:2px solid var(--ink);border-radius:0}
+.sws{display:flex;gap:.4rem;flex-wrap:wrap}
+.sw{width:1.6rem;height:1.6rem;border:2px solid var(--ink);box-shadow:2px 2px 0 var(--ink);padding:0;border-radius:0}
+.sw[aria-pressed=true]{outline:2px solid var(--cream);outline-offset:2px}
+.xprev{position:relative;height:9rem;border:2px solid var(--ink);background:linear-gradient(90deg,var(--n1) 50%,var(--cream3) 50%)}
+.xprev canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated}
+
+/* pause, arm, touch */
+.card{text-align:center;width:min(100%,24rem)}
+.card h1{font-size:2.2rem;margin-bottom:.6rem}
+.card p{margin:0 0 1rem;color:var(--n5);font-size:1rem;line-height:1.35}
+.card .row{justify-content:center}
+
+/* results */
+#results .panel{width:min(100%,44rem);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1.2rem;overflow:auto}
+#results.narrow .panel{grid-template-columns:1fr;width:min(100%,26rem)}
+#results.narrow .an{display:none}
+.rmode{font-size:1rem;color:var(--steel)}
+.rscore{font-size:2.9rem;line-height:1;margin:.15rem 0 .3rem;text-shadow:3px 3px 0 var(--ink)}
+.rbest{font-size:1rem;color:var(--steel);min-height:1.3em}
+.rbest b{color:var(--gold);font-weight:600}
+.rec{display:inline-block;background:var(--red);color:var(--cream);border:2px solid var(--ink);padding:.1rem .4rem;font-weight:700}
+.stats{display:grid;grid-template-columns:repeat(3,auto);justify-content:start;gap:.2rem 1.4rem;margin:.9rem 0 1.1rem}
+.stats span{font-size:.85rem;color:var(--steel)}
+.stats b{display:block;font-size:1.15rem;margin-top:.15rem}
+.stats b small{font-size:.85em;margin-left:.2em}
+.an canvas{width:100%;aspect-ratio:1.45;display:block;background:var(--ink);border:2px solid var(--n2);image-rendering:pixelated}
+.an p{margin:.5rem 0 0;font-size:.9rem;line-height:1.35;color:var(--n5)}
+.an p b{color:var(--gold);font-weight:600}
+
+/* HUD */
+#hud{position:absolute;inset:0;z-index:4;pointer-events:none}
+.hs{position:absolute;top:.6rem;line-height:1;background:var(--ink);border:2px solid var(--n2);box-shadow:3px 3px 0 rgba(13,11,26,.6);padding:.3rem .5rem .35rem}
+.hs span{display:block;font-size:.8rem;color:var(--steel);margin-bottom:.2rem}
+.hs b{display:block;font-size:1.45rem;color:var(--cream)}
+.hs b small{font-size:.75em;margin-left:.15em}
+#hL{left:.8rem}
+#hR{right:.8rem;text-align:right}
+#hC{left:50%;transform:translateX(-50%);text-align:center}
+#hBarW{display:block;width:7rem;height:.55rem;margin:.3rem auto 0;background:var(--n1)}
+#hBar{display:block;height:100%;background:var(--gold);transform-origin:left}
+#hBar.low{background:var(--red)}
+#hStreak{position:absolute;left:50%;top:calc(100% + .4rem);transform:translateX(-50%);white-space:nowrap;font-size:1rem;color:var(--gold);text-shadow:2px 2px 0 var(--ink);visibility:hidden}
+#hCount{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:6rem;color:var(--gold);text-shadow:5px 5px 0 var(--ink);opacity:0}
+.pop{position:absolute;left:50%;top:50%;font-size:.95rem;color:var(--cream);text-shadow:2px 2px 0 var(--ink);pointer-events:none;animation:pop .6s steps(6) forwards}
+@keyframes pop{0%{opacity:1;transform:translate(1.2rem,-1.6rem)}100%{opacity:0;transform:translate(1.2rem,-3.6rem)}}
+.toast{position:absolute;left:50%;bottom:1rem;transform:translateX(-50%);z-index:30;background:var(--cream2);color:var(--ink);border:3px solid var(--ink);box-shadow:3px 3px 0 var(--ink);padding:.4rem .7rem;font-size:.95rem;pointer-events:none;max-width:calc(100% - 2rem);text-align:center}
 </style>
 </head>
 <body>
@@ -178,149 +173,100 @@ input[type=color]{width:30px;height:26px;border:1px solid var(--line2);border-ra
   <canvas id="xh"></canvas>
 
   <div id="hud" class="hidden">
-    <div class="timer"><b id="hTime">1:00</b><i><s id="hBar"></s></i></div>
-    <div class="stat left"><span>SCORE</span><b id="hScore">0</b></div>
-    <div class="stat right"><span id="hAccL">ACCURACY</span><b id="hAcc">-</b><span id="hKillL">KILLS</span><b id="hKills">0</b></div>
-    <div class="streak" id="hStreak"></div>
-    <div class="count" id="hCount">3</div>
-    <div class="modetag" id="hMode"></div>
-    <div class="fps hidden" id="hFps"></div>
+    <div class="hs" id="hL"><span>Score</span><b id="hScore">0</b></div>
+    <div class="hs" id="hC"><span>Time</span><b id="hTime">1:00</b><i id="hBarW"><i id="hBar"></i></i><em id="hStreak"></em></div>
+    <div class="hs" id="hR"><span id="hRL">Accuracy</span><b id="hAcc">-</b></div>
+    <div id="hCount">3</div>
   </div>
 
-  <div id="menu" class="overlay">
-    <div class="top">
-      <div class="logo"><b>RANGE<em>/</em>06</b><span>aim trainer</span></div>
-      <div class="tabs" id="tabs">
-        <button data-tab="play" class="on">PLAY</button>
-        <button data-tab="sens">SENS</button>
-        <button data-tab="xhair">CROSSHAIR</button>
-        <button data-tab="video">VIDEO</button>
-      </div>
-      <div class="icons">
-        <button class="ibtn" id="btnSound" title="Sound (M)" aria-label="Toggle sound"></button>
-        <button class="ibtn" id="btnFs" title="Fullscreen (F)" aria-label="Toggle fullscreen"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1.5 5.5v-4h4M10.5 1.5h4v4M14.5 10.5v4h-4M5.5 14.5h-4v-4"/></svg></button>
-      </div>
+  <div id="title" class="ov hidden">
+    <div class="panel">
+      <h1>Aim Trainer</h1>
+      <p class="lead" id="lead"></p>
+      <div class="modes" id="modes" role="group" aria-label="Mode"></div>
+      <div class="keys"><span><i class="kc">Click</i>shoot</span><span><i class="kc">Esc</i>pause</span><span><i class="kc">R</i>restart</span></div>
+      <div class="row startrow"><button class="btn go" id="btnStart">Start</button><span class="best" id="tBest"></span></div>
+      <div class="row sensrow"><button class="btn sm" id="btnSettings">Settings</button><span id="tSens" class="num"></span></div>
     </div>
-    <div class="body">
-      <div class="wrap">
-        <!-- PLAY -->
-        <section data-panel="play">
-          <div class="modes" id="modes"></div>
-          <div class="hint">
-            <kbd>Click</kbd> shoot &nbsp; <kbd>Hold</kbd> fire (tracking) &nbsp; <kbd>R</kbd> restart &nbsp; <kbd>Esc</kbd> pause &nbsp; <kbd>F</kbd> fullscreen &nbsp; <kbd>M</kbd> sound<br>
-            60 second rounds. Your mouse is locked to the game while you play; sensitivity is matched 1:1 to the game you set in SENS.
-          </div>
-        </section>
+  </div>
 
-        <!-- SENS -->
-        <section data-panel="sens" class="hidden">
+  <div id="settings" class="ov dim hidden">
+    <div class="panel">
+      <div class="shead">
+        <div class="row" id="stabs" role="group" aria-label="Settings">
+          <button class="btn sm" data-tab="sens" aria-pressed="true">Sensitivity</button>
+          <button class="btn sm" data-tab="xhair" aria-pressed="false">Crosshair</button>
+          <button class="btn sm" data-tab="view" aria-pressed="false">Field of view</button>
+        </div>
+        <span class="sp"></span>
+        <button class="btn sm go" id="btnDone">Done</button>
+      </div>
+      <div class="scroll">
+        <section data-panel="sens">
           <div class="cols">
-            <div class="card">
-              <h4>YOUR GAME</h4>
-              <div class="field"><label for="sGame">Game</label><select id="sGame"></select></div>
-              <div class="field" id="fYaw"><label for="sYaw">Yaw (deg / count)</label><input id="sYaw" type="number" step="0.0001" min="0.00001"></div>
-              <div class="field" id="fSens"><label for="sSens" id="sSensL">In-game sensitivity</label><input id="sSens" type="number" step="0.01" min="0.0001"></div>
-              <div class="field" id="fCm"><label for="sCm">cm / 360</label><input id="sCm" type="number" step="0.1" min="1"></div>
-              <div class="field"><label for="sDpi">Mouse DPI</label>
-                <input id="sDpi" type="number" step="50" min="50">
-                <div class="chips" id="dpiChips"></div>
-              </div>
-              <label class="toggle"><input type="checkbox" id="sInv"> Invert Y</label>
-              <div class="readout">
-                <div class="big"><small>DISTANCE PER 360</small><b id="rCm">-</b></div>
-                <div><small>INCHES / 360</small><b id="rIn">-</b></div>
-                <div><small>eDPI</small><b id="rEdpi">-</b></div>
-                <div><small>DEG / COUNT</small><b id="rDeg">-</b></div>
-                <div><small>COUNTS / 360</small><b id="rCounts">-</b></div>
-              </div>
-              <div class="note" id="rawNote"></div>
+            <div>
+              <div class="fld"><label for="sGame">Game</label><select class="inp" id="sGame"></select></div>
+              <div class="fld" id="fYaw"><label for="sYaw">Yaw (degrees per count)</label><input class="inp" id="sYaw" type="number" step="0.0001" min="0.000001"></div>
+              <div class="fld" id="fSens"><label for="sSens" id="sSensL">Sensitivity</label><input class="inp" id="sSens" type="number" step="0.01" min="0.0001"></div>
+              <div class="fld" id="fCm"><label for="sCm">cm per 360</label><input class="inp" id="sCm" type="number" step="0.1" min="1"></div>
+              <div class="fld"><label for="sDpi">Mouse DPI</label><input class="inp" id="sDpi" type="number" step="50" min="50"></div>
+              <label class="chk"><input type="checkbox" id="sInv"> Invert Y</label>
+              <div class="readout"><b id="rCm">-</b><span id="rSub"></span></div>
             </div>
-            <div class="card">
-              <h4>SAME cm/360 IN OTHER GAMES <span class="mono" style="color:var(--faint);letter-spacing:0" id="convDpi"></span></h4>
-              <table class="conv"><thead><tr><th>GAME</th><th class="n">SENS</th><th class="n">YAW</th><th class="n">eDPI</th><th></th></tr></thead><tbody id="convBody"></tbody></table>
-              <div class="note">Hipfire only (ADS and scoped multipliers vary per game). Converting by yaw keeps the physical distance for a full turn identical, so it's the same muscle memory in every game. Games that round sens to fewer decimals show the leftover error. <b>~</b> marks a community-measured yaw. Fortnite is the X-axis percentage; set Y the same.</div>
+            <div>
+              <h2>Same turn in other games</h2>
+              <table class="conv"><tbody id="convBody"></tbody></table>
+              <p class="note">Hipfire. Matched by yaw, so a full turn takes the same mouse distance.</p>
+              <p class="note" id="rawNote"></p>
             </div>
           </div>
         </section>
-
-        <!-- CROSSHAIR -->
         <section data-panel="xhair" class="hidden">
           <div class="cols">
-            <div class="card">
-              <h4>PREVIEW</h4>
-              <div class="xprev"><div class="lt"></div><canvas id="xprev"></canvas></div>
-              <div class="field" style="margin-top:12px"><label>Presets</label>
-                <div class="seg" id="xPresets"></div>
-              </div>
-            </div>
-            <div class="card">
-              <h4>CROSSHAIR</h4>
-              <div class="field"><label>Style</label><div class="seg" id="xStyle"></div></div>
-              <div class="field"><label>Color</label><div class="swatches" id="xColors"></div></div>
+            <div><div class="xprev"><canvas id="xprev"></canvas></div></div>
+            <div>
+              <div class="fld"><span class="lbl">Color</span><div class="sws" id="xColors"></div></div>
               <div id="xSliders"></div>
-              <label class="toggle"><input type="checkbox" id="xOutline"> Outline</label>
-              <label class="toggle"><input type="checkbox" id="xDot"> Center dot</label>
-              <label class="toggle"><input type="checkbox" id="xT"> T-style (no top line)</label>
-              <label class="toggle"><input type="checkbox" id="xHit"> Hit markers</label>
+              <label class="chk"><input type="checkbox" id="xOutline"> Outline</label>
+              <label class="chk"><input type="checkbox" id="xDot"> Center dot</label>
             </div>
           </div>
         </section>
-
-        <!-- VIDEO -->
-        <section data-panel="video" class="hidden">
-          <div class="cols">
-            <div class="card">
-              <h4>FIELD OF VIEW</h4>
-              <div class="slider"><span>FOV</span><input type="range" id="vFov" min="50" max="130" step="1"><output id="vFovO"></output></div>
-              <div class="field"><label>Measured as</label><div class="seg" id="vFovType"></div></div>
-              <div class="field"><label>Match a game</label><div class="seg" id="vFovPresets"></div></div>
-              <div class="note" id="vFovNote"></div>
-            </div>
-            <div class="card">
-              <h4>DISPLAY</h4>
-              <div class="field"><label>Target color</label><div class="swatches" id="vTarget"></div></div>
-              <div class="field"><label>Render scale</label><div class="seg" id="vScale"></div></div>
-              <div class="slider"><span>Volume</span><input type="range" id="vVol" min="0" max="1" step="0.05"><output id="vVolO"></output></div>
-              <label class="toggle"><input type="checkbox" id="vFps"> Show FPS</label>
-              <div class="note">Sensitivity in every supported game is FOV-independent for hipfire, so changing FOV here never changes your cm/360.</div>
-            </div>
-          </div>
+        <section data-panel="view" class="hidden">
+          <div class="rng"><span>FOV</span><input type="range" id="vFov" min="50" max="130" step="1" aria-label="Field of view"><output id="vFovO"></output></div>
+          <div class="fld"><span class="lbl">Measured as</span><div class="row" id="vFovType"></div></div>
+          <div class="fld"><span class="lbl">Match a game</span><div class="row" id="vFovPresets"></div></div>
+          <p class="note" id="vFovNote"></p>
         </section>
       </div>
     </div>
-    <div class="foot">
-      <div class="sum" id="sum"></div>
-      <button class="start" id="btnStart">START</button>
-    </div>
   </div>
 
-  <div id="arm" class="overlay hidden"><div class="pcard"><h2>READY</h2><p>Click to lock the mouse and start.</p><div class="btns"><button class="btn2 pri" id="btnArm">CLICK TO START</button><button class="btn2" id="btnArmBack">BACK</button></div></div></div>
+  <div id="arm" class="ov dim hidden"><div class="panel card"><h1>Ready</h1><div class="row"><button class="btn go" id="btnArm">Click to start</button><button class="btn" id="btnArmBack">Menu</button></div></div></div>
 
-  <div id="pause" class="overlay hidden"><div class="pcard"><h2>PAUSED</h2><p id="pauseMsg">Round timer is frozen.</p><div class="btns"><button class="btn2 pri" id="btnResume">RESUME</button><button class="btn2" id="btnRestart">RESTART (R)</button><button class="btn2" id="btnQuit">MENU</button></div></div></div>
+  <div id="pause" class="ov dim hidden"><div class="panel card"><h1>Paused</h1><div class="row"><button class="btn go" id="btnResume">Resume</button><button class="btn" id="btnRestart">Restart</button><button class="btn" id="btnQuit">Menu</button></div></div></div>
 
-  <div id="results" class="overlay hidden">
-    <div class="res">
+  <div id="results" class="ov dim hidden">
+    <div class="panel">
       <div>
-        <div class="mt" id="resMode">GRIDSHOT</div>
-        <div class="sc" id="resScore">0</div>
-        <div class="bst" id="resBest"></div>
-        <div class="grid" id="resGrid"></div>
-        <div class="sensline" id="resSens"></div>
-        <div class="btns" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn2 pri" id="btnAgain">AGAIN (R)</button><button class="btn2" id="btnResMenu">MENU</button></div>
+        <div class="rmode" id="resMode"></div>
+        <div class="rscore num" id="resScore">0</div>
+        <div class="rbest" id="resBest"></div>
+        <div class="stats" id="resStats"></div>
+        <div class="row"><button class="btn go" id="btnAgain">Again</button><button class="btn" id="btnResMenu">Menu</button></div>
       </div>
-      <div class="an">
-        <h5 id="anTitle">FLICK ANALYSIS</h5>
-        <canvas id="resCanvas"></canvas>
-        <div class="anote" id="resNote"></div>
-        <h5>LAST ROUNDS</h5>
-        <canvas id="resSpark"></canvas>
-      </div>
+      <div class="an"><canvas id="resCanvas"></canvas><p id="resNote"></p></div>
     </div>
   </div>
 
-  <div id="touch" class="overlay hidden"><div class="pcard"><h2>NEEDS A MOUSE</h2><p>This one is built for a mouse and keyboard with pointer lock. Open it on a computer to play. The sensitivity converter still works here.</p><div class="btns"><button class="btn2 pri" id="btnTouchSens">OPEN CONVERTER</button></div></div></div>
+  <div id="touch" class="ov dim hidden"><div class="panel card"><h1>Aim Trainer</h1><p>Needs a mouse. Play it on a computer.</p><div class="row"><button class="btn" id="btnTouchSens">Sensitivity converter</button></div></div></div>
 
-  <div class="toast" id="toast"></div>
+  <div id="corner">
+    <button class="ib" id="btnSound" aria-label="Sound" aria-pressed="false" title="Sound (M)"></button>
+    <button class="ib" id="btnFs" aria-label="Full screen" aria-pressed="false" title="Full screen (F)"></button>
+  </div>
+
+  <div class="toast hidden" id="toast" role="status"></div>
 </div>
 
 <script type="module">
@@ -328,60 +274,56 @@ import * as THREE from 'three';
 
 /* =====================================================================
    SENSITIVITY DATA
-   Yaw = degrees of rotation per mouse count at in-game sensitivity 1.
-   cm/360 = (360 / (sens * yaw)) / DPI * 2.54
+   yaw = degrees turned per mouse count at in-game sensitivity 1.
+   cm/360 = 360 / (sens * yaw * DPI) * 2.54 = 914.4 / (sens * yaw * DPI)
 
-   Sources (checked Oct 2026):
-   - CS2 / CS:GO: m_yaw default 0.022 (Source engine cvar; Valve Developer
-     Community "m_yaw"; csdb.gg/sensitivity-converter table).
-   - Apex Legends: Source-derived, m_yaw 0.022 (csdb.gg table; 1:1 with CS
-     is the long-standing community conversion).
-   - Valorant: 0.07 (csdb.gg table; the well known CS/Valorant ratio
-     3.1818 = 0.07 / 0.022).
-   - Overwatch 2: 0.0066 (csdb.gg table; mouse-sensitivity.com).
-   - Call of Duty (MW 2019 era onward, Warzone, MWIII, BO6): 0.0066 hipfire
-     (csdb.gg lists MWIII / Warzone / BO6 at 0.0066; recharge.com converter
-     says recent CoD == Overwatch 2).
-   - Fortnite: 0.005555 per 1% of X-axis sensitivity (csdb.gg table; its
-     34.6 cm @ 800 DPI row gives 5.941%, which checks out with this yaw).
-   - Halo Infinite: ~0.0225 at 1.0 sensitivity scaling, community measured
-     with KovaaK's Sensitivity Matcher (gamepretty.com MCC->Infinite guide).
-     Other tools list 0.022, so it is flagged approximate in the UI.
-   Pitch uses the same value as yaw in all of these by default.
+   Checked Nov 2026 against csdb.gg's converter table, mouse-sensitivity.com
+   and recharge.com's converter:
+   - CS2 / CS:GO: m_yaw 0.022 (Source/Source 2 default cvar).
+   - Apex Legends: Source-derived, 0.022 (1:1 with CS).
+   - Valorant: 0.07 (fixed; the CS->Valorant factor 0.022/0.07 = 0.3143).
+   - Overwatch 2: 0.0066.
+   - Call of Duty, MW (2019) onward incl. Warzone, MWIII, BO6: 0.0066 hipfire.
+   - Fortnite: 0.005555 per 1% of X-axis sensitivity (old decimal sens 0.5555
+     per 1.0, so CS = old Fortnite x 25.25).
+   - Rainbow Six Siege: 0.00572958 at the default
+     MouseSensitivityMultiplierUnit of 0.02; sens is a whole number.
+   Halo Infinite was dropped: published yaw values disagree (0.022 / 0.0225 / 0.135).
+   Pitch equals yaw in all of these at default settings.
    ===================================================================== */
 const GAMES = [
-  {id:'cs2',  name:'CS2 / CS:GO',     yaw:0.022,    dp:3, unit:''},
-  {id:'apex', name:'Apex Legends',    yaw:0.022,    dp:2, unit:''},
-  {id:'val',  name:'Valorant',        yaw:0.07,     dp:3, unit:''},
-  {id:'ow2',  name:'Overwatch 2',     yaw:0.0066,   dp:2, unit:''},
-  {id:'cod',  name:'Call of Duty',    yaw:0.0066,   dp:2, unit:'', sub:'MW / Warzone / BO6'},
-  {id:'fn',   name:'Fortnite',        yaw:0.005555, dp:1, unit:'%', sub:'X-axis %'},
-  {id:'halo', name:'Halo Infinite',   yaw:0.0225,   dp:1, unit:'', approx:true},
+  {id:'cs2',  name:'CS2 / CS:GO',       yaw:0.022,      dp:3},
+  {id:'val',  name:'Valorant',          yaw:0.07,       dp:3},
+  {id:'apex', name:'Apex Legends',      yaw:0.022,      dp:2},
+  {id:'ow2',  name:'Overwatch 2',       yaw:0.0066,     dp:2},
+  {id:'cod',  name:'Call of Duty',      yaw:0.0066,     dp:2},
+  {id:'fn',   name:'Fortnite',          yaw:0.005555,   dp:1, unit:'%'},
+  {id:'r6',   name:'Rainbow Six Siege', yaw:0.00572958, dp:0},
 ];
-const SPECIAL = [
-  {id:'custom', name:'Custom yaw'},
-  {id:'cm',     name:'Raw cm/360'},
-];
+const SPECIAL = [{id:'custom', name:'Other (enter yaw)'}, {id:'cm', name:'cm/360 only'}];
 const FOV_PRESETS = [
-  {n:'CS2 90',      fov:90,  t:'h43'},
-  {n:'Apex 104',    fov:104, t:'h43'},
-  {n:'Apex 110',    fov:110, t:'h43'},
-  {n:'Valorant 103',fov:103, t:'h169'},
-  {n:'OW2 103',     fov:103, t:'h169'},
+  {n:'CS2 90', fov:90, t:'h43'}, {n:'Valorant 103', fov:103, t:'h169'},
+  {n:'Overwatch 103', fov:103, t:'h169'}, {n:'Apex 110', fov:110, t:'h43'},
 ];
+const TARGET = '#ffb612', BOTBODY = '#a7abbe';
 
-/* ---------- storage ---------- */
+/* ---------- storage (keys are read by the house's score card) ---------- */
 const store = {
   get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
   set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
 };
 const DEFAULTS = {
   game:'cs2', sens:1.5, dpi:800, cm:34.6, customYaw:0.022, invertY:false,
-  fov:90, fovType:'h43', target:'#3be8ff', scale:'auto', volume:0.6, showFps:false, mode:'grid',
-  xh:{style:'classic', color:'#4dff8a', length:6, thickness:2, gap:3, outline:true, outlineW:1, dot:false, alpha:1, t:false, hit:true},
+  fov:90, fovType:'h43', mode:'grid', sound:false,
+  xh:{color:'#4dff8a', length:6, thickness:2, gap:3, outline:true, outlineW:1, dot:false},
 };
-function merge(a, b){ const o = Array.isArray(a) ? a.slice() : {...a}; if (b && typeof b === 'object') for (const k in b){ if (a && typeof a[k] === 'object' && a[k] && !Array.isArray(a[k])) o[k] = merge(a[k], b[k]); else if (k in a) o[k] = b[k]; } return o; }
+function merge(a, b){ const o = {...a}; if (b && typeof b === 'object') for (const k in a){ if (!(k in b)) continue; if (a[k] && typeof a[k] === 'object') o[k] = merge(a[k], b[k]); else if (typeof b[k] === typeof a[k]) o[k] = b[k]; } return o; }
 const S = merge(DEFAULTS, store.get('range06.settings', {}));
+if (!GAMES.some(g => g.id === S.game) && !SPECIAL.some(g => g.id === S.game)){
+  // old saves: Halo Infinite (0.0225) -> keep the same turn on the CS2 scale
+  if (S.game === 'halo') S.sens = +(S.sens * 0.0225 / 0.022).toFixed(3);
+  S.game = 'cs2';
+}
 const saveS = () => store.set('range06.settings', S);
 const BEST = store.get('range06.best', {});
 const HIST = store.get('range06.hist', {});
@@ -391,18 +333,21 @@ const gameById = id => GAMES.find(g => g.id === id);
 function degPerCount(){
   if (S.game === 'cm') return 914.4 / (Math.max(1, S.cm) * Math.max(1, S.dpi));
   if (S.game === 'custom') return Math.max(1e-6, S.sens) * Math.max(1e-7, S.customYaw);
-  const g = gameById(S.game) || GAMES[0];
-  return Math.max(1e-6, S.sens) * g.yaw;
+  return Math.max(1e-6, S.sens) * (gameById(S.game) || GAMES[0]).yaw;
 }
 const cm360 = () => 914.4 / (degPerCount() * S.dpi);
+const D = (x, unit) => `<span class="d">${x}</span>${unit ? `<small>${unit}</small>` : ''}`;
 const fmt = (n, d = 0) => Number.isFinite(n) ? n.toLocaleString('en-US', {minimumFractionDigits:d, maximumFractionDigits:d}) : '-';
-function sensSummary(){
-  const dpc = degPerCount();
-  let label;
-  if (S.game === 'cm') label = `${fmt(S.cm,1)} cm/360`;
-  else if (S.game === 'custom') label = `yaw ${S.customYaw} x ${S.sens}`;
-  else { const g = gameById(S.game); label = `${g.name} ${S.sens}${g.unit}`; }
-  return {label, dpc, cm: 914.4 / (dpc * S.dpi)};
+function sensLabel(){
+  if (S.game === 'cm') return `${D(S.dpi)} DPI`;
+  if (S.game === 'custom') return `Yaw ${D(S.customYaw)} x ${D(S.sens)} at ${D(S.dpi)} DPI`;
+  const g = gameById(S.game); return `${g.name.split(' /')[0]} ${D(S.sens + (g.unit || ''))} at ${D(S.dpi)} DPI`;
+}
+// sens in game g that gives the same turn as now, rounded to what the game accepts
+function convert(g, dpc = degPerCount()){
+  const exact = dpc / g.yaw, rounded = +exact.toFixed(g.dp);
+  const err = rounded > 0 ? 914.4 / (rounded * g.yaw * S.dpi) - 914.4 / (dpc * S.dpi) : NaN;
+  return {exact, rounded, err};
 }
 
 /* =====================================================================
@@ -410,13 +355,14 @@ function sensSummary(){
    ===================================================================== */
 const $ = s => document.querySelector(s);
 const app = $('#app'), glCanvas = $('#gl'), xhCanvas = $('#xh');
-const UI = {menu:$('#menu'), hud:$('#hud'), pause:$('#pause'), results:$('#results'), touch:$('#touch'), arm:$('#arm')};
-function show(which){ for (const k in UI) UI[k].classList.toggle('hidden', !which.includes(k)); }
+const UI = {title:$('#title'), settings:$('#settings'), hud:$('#hud'), pause:$('#pause'), results:$('#results'), touch:$('#touch'), arm:$('#arm'), corner:$('#corner')};
+function show(which){ for (const k in UI) UI[k].classList.toggle('hidden', !which.includes(k)); markDirty(); }
 let toastT = 0;
-function toast(msg, ms = 2200){ const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms); }
+function toast(msg, ms = 2200){ const t = $('#toast'); t.textContent = msg; t.classList.remove('hidden'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.add('hidden'), ms); }
+const hudEl = {score:$('#hScore'), time:$('#hTime'), bar:$('#hBar'), acc:$('#hAcc'), accL:$('#hRL'), streak:$('#hStreak'), count:$('#hCount')};
 
 /* =====================================================================
-   AUDIO (all synthesized; off by default)
+   AUDIO (synthesized; off by default; nothing is created until sound is on)
    ===================================================================== */
 const Sfx = {
   ctx:null, out:null, on:false, noiseBuf:null,
@@ -424,14 +370,13 @@ const Sfx = {
     if (this.ctx) return;
     const C = window.AudioContext || window.webkitAudioContext; if (!C) return;
     this.ctx = new C();
-    this.out = this.ctx.createGain(); this.out.gain.value = S.volume;
+    this.out = this.ctx.createGain(); this.out.gain.value = 0.55;
     const comp = this.ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
     this.out.connect(comp); comp.connect(this.ctx.destination);
     const len = this.ctx.sampleRate * 0.5; this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
     const d = this.noiseBuf.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
   },
-  setOn(v){ this.on = v; if (v){ this.init(); this.ctx && this.ctx.resume(); } },
-  vol(v){ if (this.out) this.out.gain.value = v; },
+  setOn(v){ this.on = v; if (v){ this.init(); if (this.ctx && this.ctx.state !== 'running') this.ctx.resume().catch(() => {}); } else if (this.ctx && this.ctx.state === 'running') this.ctx.suspend().catch(() => {}); },
   tone(f, dur, {type='sine', v=0.3, to=null, at=0, att=0.002}={}){
     if (!this.on || !this.ctx) return;
     const t = this.ctx.currentTime + at, o = this.ctx.createOscillator(), g = this.ctx.createGain();
@@ -447,23 +392,14 @@ const Sfx = {
     s.connect(fl); fl.connect(g); g.connect(this.out); s.start(t, Math.random() * 0.3); s.stop(t + dur + 0.02);
   },
   shot(){ this.noise(0.05, {v:0.12, f:3200, q:0.8}); this.tone(180, 0.05, {type:'square', v:0.04, to:90}); },
-  kill(streak){ const f = 660 * Math.pow(2, Math.min(streak, 12) / 12); this.tone(f, 0.11, {type:'triangle', v:0.22}); this.tone(f * 2, 0.07, {v:0.08}); this.noise(0.03, {v:0.1, f:6000}); },
-  head(){ this.tone(2350, 0.22, {v:0.16}); this.tone(3520, 0.16, {v:0.09}); this.noise(0.02, {v:0.15, f:7000}); },
+  kill(streak){ const f = 660 * Math.pow(2, Math.min(streak, 12) / 12); this.tone(f, 0.11, {type:'square', v:0.12}); this.tone(f * 2, 0.07, {type:'square', v:0.04}); },
+  head(){ this.tone(2350, 0.18, {type:'square', v:0.08}); this.tone(3520, 0.12, {type:'square', v:0.05}); },
   body(){ this.tone(320, 0.06, {type:'square', v:0.06, to:200}); },
-  miss(){ this.tone(140, 0.07, {type:'sine', v:0.12, to:80}); },
-  tick(){ this.tone(1900, 0.025, {type:'square', v:0.035}); },
-  beep(hi){ this.tone(hi ? 1320 : 880, hi ? 0.25 : 0.12, {type:'sine', v:0.18}); },
-  end(){ [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.35, {type:'triangle', v:0.12, at:i * 0.07})); },
-  ui(){ this.tone(1200, 0.03, {type:'sine', v:0.06}); },
-  // kick / snare / crash, for a long streak
-  fill(){
-    const kick = at => this.tone(120, 0.18, {v:0.5, to:45, at});
-    const snare = at => { this.noise(0.14, {v:0.32, f:1800, q:0.6, at}); this.tone(190, 0.08, {type:'triangle', v:0.15, at}); };
-    const tom = (f, at) => this.tone(f, 0.18, {v:0.3, to:f * 0.6, at});
-    const s = 0.075;
-    snare(0); snare(s); tom(220, s * 2); tom(165, s * 3); tom(120, s * 4); kick(s * 5);
-    this.noise(0.9, {v:0.22, f:7000, q:0.4, type:'highpass', at:s * 5});
-  },
+  miss(){ this.tone(140, 0.07, {type:'triangle', v:0.12, to:80}); },
+  tick(){ this.tone(1900, 0.025, {type:'square', v:0.03}); },
+  beep(hi){ this.tone(hi ? 1320 : 880, hi ? 0.22 : 0.1, {type:'square', v:0.08}); },
+  end(){ [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.3, {type:'square', v:0.06, at:i * 0.08})); },
+  ui(){ this.tone(1200, 0.03, {type:'square', v:0.04}); },
 };
 
 /* =====================================================================
@@ -471,12 +407,11 @@ const Sfx = {
    ===================================================================== */
 const EYE = 1.7;
 const renderer = new THREE.WebGLRenderer({canvas:glCanvas, antialias:true, powerPreference:'high-performance'});
-renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 const scene = new THREE.Scene();
-const FOGC = 0x080b10;
+const FOGC = 0x12142e;
 scene.background = new THREE.Color(FOGC);
-scene.fog = new THREE.Fog(FOGC, 38, 120);
+scene.fog = new THREE.Fog(FOGC, 34, 110);
 const camera = new THREE.PerspectiveCamera(74, 16 / 9, 0.05, 200);
 camera.rotation.order = 'YXZ'; camera.position.set(0, EYE, 0);
 
@@ -487,124 +422,118 @@ function canvasTex(w, h, draw, repeat){
   if (repeat){ t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat[0], repeat[1]); }
   return t;
 }
-const STENCIL = '700 {s}px "Chakra Petch", "Arial Narrow", Impact, sans-serif';
-function textTex(txt, {w=512, h=256, size=200, color='rgba(200,220,240,.07)', align='center'}={}){
-  return canvasTex(w, h, (g) => { g.fillStyle = color; g.font = STENCIL.replace('{s}', size); g.textAlign = align; g.textBaseline = 'middle'; g.fillText(txt, align === 'center' ? w / 2 : 8, h / 2 + size * 0.04); });
-}
-function decal(tex, w, h, pos, rotY = 0, rotX = 0){
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({map:tex, transparent:true, depthWrite:false, fog:true}));
-  m.position.copy(pos); m.rotation.set(rotX, rotY, 0, 'YXZ'); scene.add(m); return m;
-}
 
 /* room: x -20..20, z +8..-34, y 0..11 */
 const ROOM = {x:20, zf:-34, zb:8, h:11};
-const accentMats = [];
 (function buildRoom(){
-  const floorTex = canvasTex(512, 512, (g, w) => {
-    g.fillStyle = '#141b23'; g.fillRect(0, 0, w, w);
-    for (let i = 0; i < 400; i++){ g.fillStyle = `rgba(255,255,255,${Math.random() * 0.015})`; g.fillRect(Math.random() * w, Math.random() * w, 2, 2); }
-    g.strokeStyle = 'rgba(120,150,180,.10)'; g.lineWidth = 2;
-    for (let i = 0; i <= 4; i++){ const p = i * w / 4; g.beginPath(); g.moveTo(p, 0); g.lineTo(p, w); g.stroke(); g.beginPath(); g.moveTo(0, p); g.lineTo(w, p); g.stroke(); }
-    g.strokeStyle = 'rgba(120,150,180,.2)'; g.lineWidth = 3; g.strokeRect(0, 0, w, w);
+  const floorTex = canvasTex(256, 256, (g, w) => {
+    g.fillStyle = '#1b2148'; g.fillRect(0, 0, w, w);
+    g.fillStyle = '#20275a'; g.fillRect(0, 0, w / 2, w / 2); g.fillRect(w / 2, w / 2, w / 2, w / 2);
+    g.fillStyle = 'rgba(134,162,220,.14)'; g.fillRect(0, 0, w, 2); g.fillRect(0, 0, 2, w);
   }, [10, 10.5]);
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 42), new THREE.MeshStandardMaterial({map:floorTex, roughness:0.85, metalness:0.1}));
+  floorTex.magFilter = THREE.NearestFilter;
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 42), new THREE.MeshStandardMaterial({map:floorTex, roughness:0.9}));
   floor.rotation.x = -Math.PI / 2; floor.position.set(0, 0, (ROOM.zf + ROOM.zb) / 2); scene.add(floor);
 
-  const wallTex = (rx, ry) => canvasTex(512, 512, (g, w) => {
-    g.fillStyle = '#1b2430'; g.fillRect(0, 0, w, w);
-    const grad = g.createLinearGradient(0, 0, 0, w); grad.addColorStop(0, 'rgba(255,255,255,.02)'); grad.addColorStop(1, 'rgba(0,0,0,.12)'); g.fillStyle = grad; g.fillRect(0, 0, w, w);
-    g.strokeStyle = 'rgba(0,0,0,.55)'; g.lineWidth = 6; g.strokeRect(0, 0, w, w); g.beginPath(); g.moveTo(0, w / 2); g.lineTo(w, w / 2); g.stroke();
-    g.strokeStyle = 'rgba(140,170,200,.07)'; g.lineWidth = 2; g.strokeRect(6, 6, w - 12, w - 12); g.beginPath(); g.moveTo(6, w / 2 + 5); g.lineTo(w - 6, w / 2 + 5); g.stroke();
-    g.fillStyle = 'rgba(140,170,200,.12)'; for (const [x, y] of [[18,18],[w-18,18],[18,w-18],[w-18,w-18],[18,w/2+18],[w-18,w/2+18]]){ g.beginPath(); g.arc(x, y, 3, 0, 7); g.fill(); }
+  const wallTex = (rx, ry) => canvasTex(128, 128, (g, w) => {
+    g.fillStyle = '#222b5c'; g.fillRect(0, 0, w, w);
+    g.fillStyle = '#1c2450'; g.fillRect(0, w / 2, w, w / 2);
+    g.fillStyle = '#161a3a'; g.fillRect(0, 0, w, 3); g.fillRect(0, 0, 3, w); g.fillRect(0, w / 2 - 1, w, 3);
+    g.fillStyle = 'rgba(134,162,220,.18)'; for (const [x, y] of [[8,8],[w-11,8],[8,w/2+6],[w-11,w/2+6]]) g.fillRect(x, y, 3, 3);
   }, [rx, ry]);
-  const wm = (rx, ry) => new THREE.MeshStandardMaterial({map:wallTex(rx, ry), roughness:0.92, metalness:0});
+  const wm = (rx, ry) => { const t = wallTex(rx, ry); t.magFilter = THREE.NearestFilter; return new THREE.MeshStandardMaterial({map:t, roughness:0.95}); };
   const W = 40, D = ROOM.zb - ROOM.zf, H = ROOM.h;
   const front = new THREE.Mesh(new THREE.PlaneGeometry(W, H), wm(W / 4, H / 4)); front.position.set(0, H / 2, ROOM.zf); scene.add(front);
   const back = new THREE.Mesh(new THREE.PlaneGeometry(W, H), wm(W / 4, H / 4)); back.position.set(0, H / 2, ROOM.zb); back.rotation.y = Math.PI; scene.add(back);
   const left = new THREE.Mesh(new THREE.PlaneGeometry(D, H), wm(D / 4, H / 4)); left.position.set(-ROOM.x, H / 2, (ROOM.zf + ROOM.zb) / 2); left.rotation.y = Math.PI / 2; scene.add(left);
   const right = left.clone(); right.position.x = ROOM.x; right.rotation.y = -Math.PI / 2; scene.add(right);
-  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshStandardMaterial({color:0x0b0f14, roughness:1})); ceil.rotation.x = Math.PI / 2; ceil.position.set(0, H, (ROOM.zf + ROOM.zb) / 2); scene.add(ceil);
+  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshStandardMaterial({color:0x101330, roughness:1})); ceil.rotation.x = Math.PI / 2; ceil.position.set(0, H, (ROOM.zf + ROOM.zb) / 2); scene.add(ceil);
 
-  // light strips
-  const stripMat = new THREE.MeshBasicMaterial({color:0x5aa6bd}); accentMats.push(stripMat);
-  for (const z of [-30, -22, -14, -6, 2]){ const s = new THREE.Mesh(new THREE.BoxGeometry(W - 8, 0.04, 0.12), stripMat); s.position.set(0, H - 0.05, z); scene.add(s); }
-  const edgeMat = new THREE.MeshBasicMaterial({color:0x2bb8d6}); accentMats.push(edgeMat);
-  const e1 = new THREE.Mesh(new THREE.BoxGeometry(W, 0.05, 0.05), edgeMat); e1.position.set(0, 0.03, ROOM.zf + 0.03); scene.add(e1);
-  for (const sx of [-1, 1]){ const e = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, D), edgeMat); e.position.set(sx * (ROOM.x - 0.03), 0.03, (ROOM.zf + ROOM.zb) / 2); scene.add(e); }
+  // ceiling lights: short cream panels, not long thin lines
+  const lightMat = new THREE.MeshBasicMaterial({color:0xefe2c0});
+  for (const z of [-28, -18, -8, 2]) for (const x of [-9, 0, 9]){ const s = new THREE.Mesh(new THREE.BoxGeometry(3, 0.08, 0.7), lightMat); s.position.set(x, H - 0.04, z); scene.add(s); }
+  const edgeMat = new THREE.MeshBasicMaterial({color:0xb5821a});
+  const e1 = new THREE.Mesh(new THREE.BoxGeometry(W, 0.12, 0.06), edgeMat); e1.position.set(0, 0.06, ROOM.zf + 0.03); scene.add(e1);
+  for (const sx of [-1, 1]){ const e = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, D), edgeMat); e.position.set(sx * (ROOM.x - 0.03), 0.06, (ROOM.zf + ROOM.zb) / 2); scene.add(e); }
 
-  // shooting line: black and gold
-  const hz = canvasTex(1024, 32, (g, w, h) => { g.fillStyle = '#0c0c0c'; g.fillRect(0, 0, w, h); g.fillStyle = '#c99316'; for (let x = -h; x < w; x += 48){ g.beginPath(); g.moveTo(x, h); g.lineTo(x + 24, h); g.lineTo(x + 24 + h, 0); g.lineTo(x + h, 0); g.fill(); } });
-  const line = new THREE.Mesh(new THREE.PlaneGeometry(14, 0.28), new THREE.MeshStandardMaterial({map:hz, roughness:0.7}));
+  // shooting line: ink and gold
+  const hz = canvasTex(256, 16, (g, w, h) => { g.fillStyle = '#0d0b1a'; g.fillRect(0, 0, w, h); g.fillStyle = '#ffb612'; for (let x = 0; x < w; x += 32) g.fillRect(x, 0, 16, h); });
+  hz.magFilter = THREE.NearestFilter;
+  const line = new THREE.Mesh(new THREE.PlaneGeometry(14, 0.28), new THREE.MeshStandardMaterial({map:hz, roughness:0.8}));
   line.rotation.x = -Math.PI / 2; line.position.set(0, 0.004, -1.4); scene.add(line);
 
-  // distance markings
-  for (const d of [10, 20, 30]){ decal(textTex(String(d), {size:150, color:'rgba(180,205,230,.10)'}), 2.4, 1.2, new THREE.Vector3(-6.5, 0.006, -d), 0, -Math.PI / 2); }
-  decal(textTex('06', {w:1024, h:512, size:460, color:'rgba(180,205,230,.03)'}), 16, 8, new THREE.Vector3(0, 6.6, ROOM.zf + 0.02));
-  decal(textTex('BAY 1701', {w:1024, h:128, size:90, color:'rgba(180,205,230,.08)', align:'left'}), 7, 0.875, new THREE.Vector3(-ROOM.x + 0.02, 3.2, -24), Math.PI / 2);
-
   // crates
-  const crateTex = canvasTex(256, 256, (g, w) => { g.fillStyle = '#1a2028'; g.fillRect(0, 0, w, w); g.strokeStyle = '#0d1116'; g.lineWidth = 14; g.strokeRect(7, 7, w - 14, w - 14); g.lineWidth = 8; g.beginPath(); g.moveTo(14, 14); g.lineTo(w - 14, w - 14); g.stroke(); });
-  const crateTex117 = canvasTex(256, 256, (g, w) => { g.fillStyle = '#1a2028'; g.fillRect(0, 0, w, w); g.strokeStyle = '#0d1116'; g.lineWidth = 14; g.strokeRect(7, 7, w - 14, w - 14); g.fillStyle = 'rgba(200,215,150,.22)'; g.font = STENCIL.replace('{s}', 96); g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('117', w / 2, w / 2 + 4); });
-  const cm = new THREE.MeshStandardMaterial({map:crateTex, roughness:0.8}), cm117 = new THREE.MeshStandardMaterial({map:crateTex117, roughness:0.8});
-  const crate = (x, y, z, s, ry, mat = cm) => { const b = new THREE.Mesh(new THREE.BoxGeometry(s, s, s), mat); b.position.set(x, y + s / 2, z); b.rotation.y = ry; scene.add(b); };
-  crate(-17.5, 0, -30, 2, 0.1); crate(-15.4, 0, -31, 1.6, -0.2, cm117); crate(-17.2, 2, -30.2, 1.4, 0.4);
+  const crateTex = canvasTex(32, 32, (g, w) => { g.fillStyle = '#33438a'; g.fillRect(0, 0, w, w); g.fillStyle = '#222b5c'; g.fillRect(0, 0, w, 3); g.fillRect(0, w - 3, w, 3); g.fillRect(0, 0, 3, w); g.fillRect(w - 3, 0, 3, w); for (let i = 3; i < w - 3; i++) g.fillRect(i, i, 2, 2); });
+  crateTex.magFilter = THREE.NearestFilter;
+  const cmat = new THREE.MeshStandardMaterial({map:crateTex, roughness:0.85});
+  const crate = (x, y, z, s, ry) => { const b = new THREE.Mesh(new THREE.BoxGeometry(s, s, s), cmat); b.position.set(x, y + s / 2, z); b.rotation.y = ry; scene.add(b); };
+  crate(-17.5, 0, -30, 2, 0.1); crate(-15.4, 0, -31, 1.6, -0.2); crate(-17.2, 2, -30.2, 1.4, 0.4);
   crate(17, 0, -28, 1.8, -0.3); crate(16.8, 0, -4, 1.2, 0.2);
 
-  // catwalk on the right wall, with someone crouched at the far end
-  const cw = new THREE.Mesh(new THREE.BoxGeometry(2, 0.15, 30), new THREE.MeshStandardMaterial({color:0x151b22, roughness:0.8})); cw.position.set(ROOM.x - 1, 7.2, -18); scene.add(cw);
-  const rail = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 30), edgeMat); rail.position.set(ROOM.x - 2, 8.1, -18); scene.add(rail);
-  for (let z = -32; z <= -4; z += 4){ const p = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.9, 0.05), new THREE.MeshStandardMaterial({color:0x222a33})); p.position.set(ROOM.x - 2, 7.7, z); scene.add(p); }
-  const fig = new THREE.Group(), fm = new THREE.MeshStandardMaterial({color:0x0b0d10, roughness:1});
+  // catwalk on the right wall, with the house's hooded figure crouched at the far end
+  const cw = new THREE.Mesh(new THREE.BoxGeometry(2, 0.15, 30), new THREE.MeshStandardMaterial({color:0x161a3a, roughness:0.8})); cw.position.set(ROOM.x - 1, 7.2, -18); scene.add(cw);
+  const rail = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 30), edgeMat); rail.position.set(ROOM.x - 2, 8.1, -18); scene.add(rail);
+  const postMat = new THREE.MeshStandardMaterial({color:0x33438a});
+  for (let z = -32; z <= -4; z += 4){ const p = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.9, 0.06), postMat); p.position.set(ROOM.x - 2, 7.7, z); scene.add(p); }
+  const fig = new THREE.Group(), fm = new THREE.MeshStandardMaterial({color:0x0d0b1a, roughness:1});
   const robe = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.9, 7), fm); robe.position.y = 0.45; fig.add(robe);
   const hood = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.36, 7), fm); hood.position.set(0, 1.02, 0.03); hood.rotation.x = 0.35; fig.add(hood);
   const hd = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), fm); hd.position.y = 0.9; fig.add(hd);
   fig.position.set(ROOM.x - 1.2, 7.28, -31.5); fig.rotation.y = -0.9; scene.add(fig);
 
-  scene.add(new THREE.HemisphereLight(0xb4cde6, 0x1a2129, 1.6));
-  const dl = new THREE.DirectionalLight(0xdfefff, 1.5); dl.position.set(4, 10, 6); scene.add(dl);
-  const pl = new THREE.PointLight(0x5fd8ff, 30, 30, 1.4); pl.position.set(0, 8, -16); scene.add(pl);
-  const pl2 = new THREE.PointLight(0xffd59a, 10, 22, 1.5); pl2.position.set(0, 6, 2); scene.add(pl2);
+  scene.add(new THREE.HemisphereLight(0xc4d4f2, 0x161a3a, 1.5));
+  const dl = new THREE.DirectionalLight(0xfffaf0, 1.3); dl.position.set(4, 10, 6); scene.add(dl);
+  const pl = new THREE.PointLight(0xffe08a, 24, 30, 1.4); pl.position.set(0, 8, -14); scene.add(pl);
 })();
+// distance numbers on the floor, drawn once the pixel font is in
+function floorNumbers(){
+  for (const d of [10, 20, 30]){
+    const tex = canvasTex(128, 64, (g, w, h) => { g.fillStyle = 'rgba(196,212,242,.16)'; g.font = '56px "Silkscreen", monospace'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(d), w / 2, h / 2 + 2); });
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.2), new THREE.MeshBasicMaterial({map:tex, transparent:true, depthWrite:false}));
+    m.rotation.x = -Math.PI / 2; m.position.set(-6.5, 0.006, -d); scene.add(m);
+  }
+  markDirty();
+}
 
 /* gridshot board */
-const board = new THREE.Mesh(new THREE.PlaneGeometry(7.4, 5.6), new THREE.MeshStandardMaterial({
-  map: canvasTex(740, 560, (g, w, h) => {
-    const bg = g.createLinearGradient(0, 0, 0, h); bg.addColorStop(0, '#1e2a36'); bg.addColorStop(1, '#151d26'); g.fillStyle = bg; g.fillRect(0, 0, w, h);
-    g.strokeStyle = 'rgba(90,190,220,.35)'; g.lineWidth = 3; g.strokeRect(6, 6, w - 12, h - 12);
-    g.strokeStyle = 'rgba(140,170,200,.10)'; g.lineWidth = 2;
-    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++){ const x = w / 2 + i * 170, y = h / 2 - j * 150; g.beginPath(); g.moveTo(x - 9, y); g.lineTo(x + 9, y); g.moveTo(x, y - 9); g.lineTo(x, y + 9); g.stroke(); }
-    for (const [x, y] of [[20,20],[w-20,20],[20,h-20],[w-20,h-20]]){ g.fillStyle = 'rgba(140,170,200,.2)'; g.beginPath(); g.arc(x, y, 3.5, 0, 7); g.fill(); }
-  }), roughness:0.95}));
+const boardTex = canvasTex(148, 112, (g, w, h) => {
+  g.fillStyle = '#0d0b1a'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#1c2450'; g.fillRect(3, 3, w - 6, h - 6);
+  g.fillStyle = 'rgba(134,162,220,.25)';
+  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++){ const x = w / 2 + i * 34, y = h / 2 - j * 30; g.fillRect(x - 2, y, 5, 1); g.fillRect(x, y - 2, 1, 5); }
+});
+boardTex.magFilter = THREE.NearestFilter;
+const board = new THREE.Mesh(new THREE.PlaneGeometry(7.4, 5.6), new THREE.MeshStandardMaterial({map:boardTex, roughness:0.95}));
 board.position.set(0, EYE + 0.2, -11.2); scene.add(board);
 
-/* ---------- target material (rim-lit) ---------- */
+/* ---------- target material: flat banded shading so the spheres read as pixel-art balls ---------- */
 const targetVS = `varying vec3 vN; varying vec3 vV;
 void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }`;
 const targetFS = `uniform vec3 uColor; uniform float uFlash; uniform float uFade;
 varying vec3 vN; varying vec3 vV;
 void main(){
   vec3 n = normalize(vN);
-  float ndl = max(dot(n, normalize(vec3(0.35, 0.75, 0.55))), 0.0);
-  float rim = pow(1.0 - max(dot(n, vV), 0.0), 2.6);
-  float spec = pow(max(dot(reflect(-normalize(vec3(0.35,0.75,0.55)), n), vV), 0.0), 24.0);
-  vec3 c = uColor * (0.32 + 0.85 * ndl) + rim * mix(uColor, vec3(1.0), 0.45) * 0.95 + spec * 0.35;
+  float ndl = max(dot(n, normalize(vec3(-0.35, 0.65, 0.65))), 0.0);
+  float rim = 1.0 - max(dot(n, vV), 0.0);
+  float band = ndl > 0.8 ? 1.15 : ndl > 0.35 ? 0.95 : 0.68;
+  vec3 c = uColor * band;
+  if (rim > 0.82) c = vec3(0.051, 0.043, 0.102);
   c = mix(c, vec3(1.0), uFlash);
   gl_FragColor = vec4(c * uFade, 1.0);
-  #include <tonemapping_fragment>
   #include <colorspace_fragment>
 }`;
 const makeTargetMat = (hex) => new THREE.ShaderMaterial({uniforms:{uColor:{value:new THREE.Color(hex)}, uFlash:{value:0}, uFade:{value:1}}, vertexShader:targetVS, fragmentShader:targetFS});
-const sphereGeo = new THREE.SphereGeometry(1, 40, 24);
+const sphereGeo = new THREE.SphereGeometry(1, 32, 20);
 
 const pool = [];
 for (let i = 0; i < 6; i++){
-  const m = new THREE.Mesh(sphereGeo, makeTargetMat(S.target)); m.visible = false; scene.add(m);
-  pool.push({mesh:m, alive:false, r:0.4, spawnT:0, cell:-1, life:0, flash:0, born:0});
+  const m = new THREE.Mesh(sphereGeo, makeTargetMat(TARGET)); m.visible = false; scene.add(m);
+  pool.push({mesh:m, alive:false, r:0.4, spawnT:0, cell:-1, life:0, flash:0});
 }
 let targets = [];
 function spawnTarget(pos, r, extra = {}){
   const t = pool.find(p => !p.alive); if (!t) return null;
-  t.alive = true; t.r = r; t.spawnT = R ? R.t : 0; t.flash = 0; t.born = 0; Object.assign(t, {cell:-1, life:0}, extra);
+  t.alive = true; t.r = r; t.spawnT = R ? R.t : 0; t.flash = 0; Object.assign(t, {cell:-1, life:0}, extra);
   t.mesh.position.copy(pos); t.mesh.scale.setScalar(r); t.mesh.visible = true;
   t.mesh.material.uniforms.uFade.value = 1;
   targets.push(t); return t;
@@ -615,10 +544,10 @@ function clearTargets(){ for (const t of pool){ t.alive = false; t.mesh.visible 
 /* ---------- bot ---------- */
 const bot = (() => {
   const g = new THREE.Group();
-  const bodyMat = makeTargetMat('#8ea0b3'), headMat = makeTargetMat(S.target);
+  const bodyMat = makeTargetMat(BOTBODY), headMat = makeTargetMat(TARGET);
   const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.9, 6, 20), bodyMat); body.position.y = 0.78; g.add(body);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 18), headMat); head.scale.setScalar(0.15); head.position.y = 1.72; g.add(head);
-  const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.42, 24), new THREE.MeshBasicMaterial({color:0x000000, transparent:true, opacity:0.45, depthWrite:false}));
+  const head = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), headMat); head.scale.setScalar(0.15); head.position.y = 1.72; g.add(head);
+  const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.42, 12), new THREE.MeshBasicMaterial({color:0x0d0b1a, transparent:true, opacity:0.5, depthWrite:false}));
   shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.01; scene.add(shadow);
   g.visible = false; shadow.visible = false; scene.add(g);
   return {g, body, head, bodyMat, headMat, shadow, x:0, y:0, z:-14, vx:0, vy:0, want:0, switchT:0, alive:false, hp:100, spawnT:0, respawnAt:0, flash:0, bodyR:0.28, bodyA:0.33, bodyB:1.23, headY:1.72, headR:0.15};
@@ -628,44 +557,42 @@ function hideBot(){ bot.alive = false; bot.g.visible = bot.shadow.visible = fals
 function syncBot(){
   bot.g.position.set(bot.x, bot.y, bot.z);
   bot.g.lookAt(0, bot.y, 0);
-  bot.shadow.position.set(bot.x, 0.01, bot.z); bot.shadow.material.opacity = 0.45 / (1 + bot.y * 1.5);
+  bot.shadow.position.set(bot.x, 0.01, bot.z); bot.shadow.material.opacity = 0.5 / (1 + bot.y * 1.5);
   bot.bodyMat.uniforms.uFlash.value = bot.flash; bot.headMat.uniforms.uFlash.value = bot.flash;
 }
 
-/* ---------- particles & rings ---------- */
-const PN = 360;
-const parts = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({color:0xffffff, toneMapped:false}), PN);
+/* ---------- particles (cubes) ---------- */
+const PN = 240;
+const parts = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({color:0xffffff}), PN);
 parts.instanceMatrix.setUsage(THREE.DynamicDrawUsage); parts.frustumCulled = false; scene.add(parts);
 const pdata = Array.from({length:PN}, () => ({life:0, max:1, p:new THREE.Vector3(), v:new THREE.Vector3(), s:0.05}));
-const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _c = new THREE.Color();
-let pIdx = 0;
+const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _c = new THREE.Color(), _c2 = new THREE.Color(), _e = new THREE.Euler();
+const WHITE = new THREE.Color(0xfffaf0);
+let pIdx = 0, partsAlive = 0;
 for (let i = 0; i < PN; i++){ _m.makeScale(0, 0, 0); parts.setMatrixAt(i, _m); parts.setColorAt(i, _c.set(0xffffff)); }
-function burst(pos, hex, n = 26, speed = 5, size = 0.06){
-  _c.set(hex);
+function burst(pos, hex, n = 20, speed = 5, size = 0.06){
+  _c.set(hex); _c2.copy(_c).lerp(WHITE, 0.6);
   for (let i = 0; i < n; i++){
     const p = pdata[pIdx]; const idx = pIdx; pIdx = (pIdx + 1) % PN;
     p.p.copy(pos); p.v.set(Math.random() - 0.5, Math.random() - 0.3, Math.random() - 0.5).normalize().multiplyScalar(speed * (0.4 + Math.random()));
-    p.life = p.max = 0.35 + Math.random() * 0.35; p.s = size * (0.6 + Math.random() * 0.8);
-    parts.setColorAt(idx, i % 4 === 0 ? _c.clone().lerp(new THREE.Color(1, 1, 1), 0.6) : _c);
+    p.life = p.max = 0.35 + Math.random() * 0.3; p.s = size * (0.7 + Math.random() * 0.6);
+    parts.setColorAt(idx, i % 4 === 0 ? _c2 : _c);
   }
-  parts.instanceColor.needsUpdate = true;
+  parts.instanceColor.needsUpdate = true; partsAlive = 1;
 }
 function updateParts(dt){
+  if (!partsAlive) return;
+  let alive = 0;
   for (let i = 0; i < PN; i++){
     const p = pdata[i];
-    if (p.life <= 0){ continue; }
+    if (p.life <= 0) continue;
     p.life -= dt; p.v.y -= 9 * dt; p.v.multiplyScalar(1 - 2.2 * dt); p.p.addScaledVector(p.v, dt);
-    const k = Math.max(0, p.life / p.max), s = p.life > 0 ? p.s * k : 0;
-    _q.setFromEuler(new THREE.Euler(p.life * 9, p.life * 7, 0)); _m.compose(p.p, _q, _s.set(s, s, s)); parts.setMatrixAt(i, _m);
+    const s = p.life > 0 ? p.s * Math.max(0, p.life / p.max) : 0;
+    if (p.life > 0) alive++;
+    _q.setFromEuler(_e.set(p.life * 9, p.life * 7, 0)); _m.compose(p.p, _q, _s.set(s, s, s)); parts.setMatrixAt(i, _m);
   }
-  parts.instanceMatrix.needsUpdate = true;
+  parts.instanceMatrix.needsUpdate = true; partsAlive = alive;
 }
-const rings = [];
-const ringGeo = new THREE.RingGeometry(0.9, 1, 48);
-for (let i = 0; i < 8; i++){ const m = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0, depthWrite:false, blending:THREE.AdditiveBlending, toneMapped:false})); m.visible = false; scene.add(m); rings.push({m, t:0, r:1}); }
-let ringIdx = 0;
-function ring(pos, r, hex){ const R = rings[ringIdx]; ringIdx = (ringIdx + 1) % rings.length; R.m.position.copy(pos); R.m.lookAt(camera.position); R.m.material.color.set(hex); R.t = 0; R.r = r; R.m.visible = true; }
-function updateRings(dt){ for (const R of rings){ if (!R.m.visible) continue; R.t += dt; const k = R.t / 0.28; if (k >= 1){ R.m.visible = false; continue; } R.m.scale.setScalar(R.r * (1 + k * 1.6)); R.m.material.opacity = (1 - k) * 0.9; } }
 
 /* =====================================================================
    CAMERA / INPUT
@@ -683,14 +610,14 @@ function verticalFov(){
   const ar = S.fovType === 'h43' ? 4 / 3 : 16 / 9;
   return 2 * Math.atan(Math.tan(S.fov * Math.PI / 360) / ar) * 180 / Math.PI;
 }
-function applyFov(){ camera.fov = verticalFov(); camera.updateProjectionMatrix(); }
+function applyFov(){ camera.fov = verticalFov(); camera.updateProjectionMatrix(); markDirty(); }
 
 let locked = false, rawInput = null, testMode = false, firing = false;
 async function lockPointer(){
   try{
     const p = app.requestPointerLock({unadjustedMovement:true});
     if (p && typeof p.then === 'function'){ await p; rawInput = true; }
-    else rawInput = false;
+    else rawInput = false; // older Safari: no promise, no raw option
     return true;
   }catch(e){
     if (e && e.name === 'NotSupportedError'){
@@ -704,14 +631,15 @@ document.addEventListener('pointerlockchange', () => {
   if (locked){
     if (state === 'arming') beginCountdown();
     else if (state === 'paused') resume();
-    renderSummary();
   } else {
     firing = false;
     if (state === 'countdown' || state === 'play') pause();
   }
+  renderSens();
 });
-document.addEventListener('pointerlockerror', () => { if (state === 'arming' || state === 'paused') toast('The browser blocked mouse lock. Wait a second and click again.'); });
+document.addEventListener('pointerlockerror', () => { if (state === 'arming' || state === 'paused'){ show(state === 'arming' ? ['arm', 'corner'] : ['pause', 'corner']); toast('Mouse lock blocked. Click again in a second.'); } });
 
+// one raw count turns sens x yaw degrees, exactly like the game
 function onLook(dx, dy){
   const k = degPerCount() * Math.PI / 180;
   yaw = wrap(yaw - dx * k);
@@ -725,59 +653,52 @@ document.addEventListener('mousemove', e => {
 });
 document.addEventListener('mousedown', e => {
   if (!(locked || testMode) || e.button !== 0) return;
-  if (state === 'play') { firing = true; shoot(); }
+  if (state === 'play'){ firing = true; if (R.mode !== 'track') shoot(); }
 });
 document.addEventListener('mouseup', e => { if (e.button === 0) firing = false; });
+// the page around the iframe must not scroll while you play
+app.addEventListener('wheel', e => { if (!e.target.closest('.scroll')) e.preventDefault(); }, {passive:false});
+app.addEventListener('contextmenu', e => { if (state === 'play' || state === 'countdown') e.preventDefault(); });
 
 /* =====================================================================
    HIT TESTS
    ===================================================================== */
-const _o = new THREE.Vector3(), _d = new THREE.Vector3(), _v = new THREE.Vector3(), _w = new THREE.Vector3();
+const _o = new THREE.Vector3(), _d = new THREE.Vector3(), _v = new THREE.Vector3(), _w = new THREE.Vector3(), _h = new THREE.Vector3();
 function raySphere(o, d, c, r){ _v.subVectors(c, o); const t = _v.dot(d); if (t < 0) return -1; const d2 = _v.lengthSq() - t * t; return d2 <= r * r ? t : -1; }
-// closest approach between ray and vertical segment [yA, yB] at (x, z)
+// closest approach between a ray and the vertical segment [yA, yB] at (x, z)
 function rayCapsule(o, d, x, z, yA, yB, r){
   const L = yB - yA;
   _w.set(o.x - x, o.y - yA, o.z - z);
-  let s = 0, t = 0;
   const b = d.y, dd = d.dot(_w), e = _w.y, den = 1 - b * b;
-  s = den > 1e-6 ? (e - b * dd) / den : 0;
+  let s = den > 1e-6 ? (e - b * dd) / den : 0;
   s = Math.max(0, Math.min(L, s));
-  t = Math.max(0, (s * b - dd));
+  const t = Math.max(0, (s * b - dd));
   s = Math.max(0, Math.min(L, _w.y + t * d.y));
   const px = o.x + t * d.x - x, py = o.y + t * d.y - (yA + s), pz = o.z + t * d.z - z;
   return (px * px + py * py + pz * pz) <= r * r ? t : -1;
 }
 function hitBot(o, d){
   if (!bot.alive) return null;
-  _v.set(bot.x, bot.y + bot.headY, bot.z);
-  const th = raySphere(o, d, _v, bot.headR);
-  if (th >= 0) return 'head';
-  const tb = rayCapsule(o, d, bot.x, bot.z, bot.y + bot.bodyA, bot.y + bot.bodyB, bot.bodyR);
-  return tb >= 0 ? 'body' : null;
+  if (raySphere(o, d, _h.set(bot.x, bot.y + bot.headY, bot.z), bot.headR) >= 0) return 'head';
+  return rayCapsule(o, d, bot.x, bot.z, bot.y + bot.bodyA, bot.y + bot.bodyB, bot.bodyR) >= 0 ? 'body' : null;
 }
 
 /* =====================================================================
    GAME STATE
    ===================================================================== */
 const ROUND_LEN = 60;
-let state = 'menu', pausedFrom = null, now = 0;
-let R = null; // current round
+let state = 'menu', pausedFrom = null;
+let R = null;
 let modeId = S.mode;
 
 const MODES = {
-  grid:{name:'GRIDSHOT', key:'01', desc:'Three targets on a tight grid. Clean target switching and click timing.', glyph:'grid', usesBoard:true, flick:true},
-  flick:{name:'FLICKS', key:'02', desc:'One small target anywhere in a 100 degree arc. Big static flicks, first-shot accuracy.', glyph:'flick', flick:true},
-  track:{name:'TRACKING', key:'03', desc:'Hold fire on a strafing, jumping bot. Smoothness over speed.', glyph:'track'},
-  reflex:{name:'REFLEX', key:'04', desc:'Tiny targets pop next to your crosshair and vanish fast. Micro-flicks on reaction.', glyph:'reflex'},
-  head:{name:'HEADSHOT', key:'05', desc:'A bot strafing side to side. Only the head counts, body shots do nothing.', glyph:'head', flick:true},
+  grid:  {name:'Gridshot', lead:'Three targets. Shoot them as fast as you can.', usesBoard:true, flick:true},
+  flick: {name:'Flicks',   lead:'One small target somewhere ahead. Flick to it.', flick:true},
+  track: {name:'Tracking', lead:'Hold click and stay on the moving bot.'},
+  reflex:{name:'Reflex',   lead:'Targets pop up near you. Hit them before they go.'},
+  head:  {name:'Headshot', lead:'A strafing bot. Only the head counts.', flick:true},
 };
-const GLYPHS = {
-  grid:'<svg class="glyph" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="5" r="2.5"/><circle cx="13" cy="13" r="2.5" fill="currentColor"/><circle cx="21" cy="5" r="2.5"/><circle cx="5" cy="21" r="2.5" fill="currentColor"/><circle cx="21" cy="21" r="2.5"/><circle cx="21" cy="13" r="2.5" fill="currentColor"/></svg>',
-  flick:'<svg class="glyph" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 20 C9 8 15 6 21 6" stroke-dasharray="2 2"/><circle cx="21" cy="6" r="3" fill="currentColor"/><path d="M2 20h4M4 18v4"/></svg>',
-  track:'<svg class="glyph" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 18 Q7 10 13 16 T24 12"/><circle cx="13" cy="16" r="3" fill="currentColor"/></svg>',
-  reflex:'<svg class="glyph" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 7v4M13 15v4M7 13h4M15 13h4"/><circle cx="18" cy="8" r="1.8" fill="currentColor"/></svg>',
-  head:'<svg class="glyph" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="13" cy="6" r="3" fill="currentColor"/><path d="M8 24v-9a5 5 0 0 1 10 0v9"/></svg>',
-};
+if (!MODES[modeId]) modeId = 'grid';
 
 function newRound(mode){
   return {mode, t:0, cd:3, score:0, shots:0, hits:0, kills:0, ttks:[], streak:0, bestStreak:0, lastKillT:0,
@@ -788,18 +709,18 @@ function newRound(mode){
 function startRound(mode){
   modeId = mode; S.mode = mode; saveS();
   R = newRound(mode);
-  clearTargets(); hideBot();
+  clearTargets(); hideBot(); firing = false;
   yaw = 0; pitch = 0; applyCam();
   board.visible = !!MODES[mode].usesBoard;
-  bot.bodyMat.uniforms.uColor.value.set(mode === 'track' ? S.target : '#7f8fa0');
-  $('#hMode').textContent = MODES[mode].name;
-  $('#hAccL').textContent = mode === 'track' ? 'ON TARGET' : 'ACCURACY';
-  $('#hKillL').textContent = mode === 'reflex' ? 'AVG REACTION' : 'KILLS';
-  updateHud();
+  bot.bodyMat.uniforms.uColor.value.set(mode === 'track' ? TARGET : BOTBODY);
+  hudEl.accL.textContent = mode === 'track' ? 'On target' : mode === 'reflex' ? 'Reaction' : 'Accuracy';
+  updateHud(); updateClock();
   if (testMode || locked){ beginCountdown(); return; }
   state = 'arming';
-  show(['arm']);
-  lockPointer().then(ok => { if (!ok && state === 'arming') { /* user clicks the arm button */ } });
+  show(['hud']);
+  // the overlay only appears if the browser does not grant the lock straight away
+  setTimeout(() => { if (state === 'arming') show(['arm', 'corner']); }, 250);
+  lockPointer();
 }
 function beginCountdown(){
   state = 'countdown'; R.cd = 3; R.lastBeep = 4;
@@ -809,7 +730,7 @@ function beginPlay(){
   state = 'play'; R.t = 0; R.lastKillT = 0; R.flickStart = {y:yaw, p:pitch};
   Sfx.beep(true);
   const m = R.mode;
-  if (m === 'grid'){ const cells = shuffle([0,1,2,3,4,5,6,7,8]).slice(0, 3); cells.forEach(c => spawnGrid(c)); }
+  if (m === 'grid') shuffle([0,1,2,3,4,5,6,7,8]).slice(0, 3).forEach(c => spawnGrid(c));
   if (m === 'flick') spawnFlick();
   if (m === 'track') spawnBotTrack();
   if (m === 'head') spawnBotHead();
@@ -818,27 +739,29 @@ function beginPlay(){
 function pause(){
   if (state !== 'play' && state !== 'countdown') return;
   pausedFrom = state; state = 'paused'; firing = false;
-  show(['pause', 'hud']);
+  show(['pause', 'corner']);
 }
 async function resume(){
   if (state !== 'paused') return;
-  if (!locked && !testMode){ const ok = await lockPointer(); if (!ok) toast('Click Resume again in a moment, the browser needs a beat after Esc.'); return; }
+  if (!locked && !testMode){ const ok = await lockPointer(); if (!ok) toast('Mouse lock blocked. Click Resume again in a second.'); return; }
   state = pausedFrom || 'play';
   if (state === 'countdown'){ R.cd = 3; R.lastBeep = 4; }
   show(['hud']);
 }
-function quitToMenu(){
-  state = 'menu'; clearTargets(); hideBot(); board.visible = true;
+function toTitle(){
+  state = 'menu'; R = null; clearTargets(); hideBot(); board.visible = true; firing = false;
   if (document.pointerLockElement) document.exitPointerLock();
-  show(['menu']); renderModes(); renderSummary(); idleTargets();
+  yaw = 0.12; pitch = 0.07; applyCam();
+  renderTitle(); show(['title', 'corner']); idleTargets();
 }
 function endRound(){
   state = 'results'; firing = false; clearTargets(); hideBot();
   if (document.pointerLockElement) document.exitPointerLock();
   Sfx.end();
   renderResults();
-  show(['results']);
+  show(['results', 'corner']);
 }
+function restart(){ clearTargets(); hideBot(); startRound(modeId); }
 
 const rand = (a, b) => a + Math.random() * (b - a);
 function shuffle(a){ for (let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
@@ -848,11 +771,10 @@ const GRID_Z = -11, GRID_DX = 1.7, GRID_DY = 1.5, GRID_R = 0.44;
 function cellPos(c){ const i = c % 3 - 1, j = Math.floor(c / 3) - 1; return new THREE.Vector3(i * GRID_DX, EYE + 0.2 + j * GRID_DY, GRID_Z); }
 function spawnGrid(c){ return spawnTarget(cellPos(c), GRID_R, {cell:c}); }
 function spawnFlick(){
-  const aim = {y:yaw, p:pitch};
   let y, p, tries = 0;
   do { y = rand(-50, 50) * Math.PI / 180; p = rand(-6, 20) * Math.PI / 180; tries++; }
-  while (tries < 30 && angBetween(y, p, aim.y, aim.p) < 14 * Math.PI / 180);
-  const d = 14; const pos = dirFromAngles(y, p).multiplyScalar(d); pos.y += EYE;
+  while (tries < 30 && angBetween(y, p, yaw, pitch) < 14 * Math.PI / 180);
+  const pos = dirFromAngles(y, p).multiplyScalar(14); pos.y += EYE;
   spawnTarget(pos, 0.34);
 }
 function angBetween(y1, p1, y2, p2){ return dirFromAngles(y1, p1).angleTo(dirFromAngles(y2, p2)); }
@@ -862,9 +784,7 @@ function spawnReflex(){
   const a = rand(0, Math.PI * 2), off = rand(2.5, 8) * Math.PI / 180;
   const dir = f.clone().multiplyScalar(Math.cos(off)).addScaledVector(right, Math.sin(off) * Math.cos(a)).addScaledVector(u2, Math.sin(off) * Math.sin(a)).normalize();
   if (pitchOf(dir) < -0.6) dir.y = Math.abs(dir.y);
-  const pos = camera.position.clone().addScaledVector(dir, 12);
-  spawnTarget(pos, 0.2, {life:0.95});
-  ring(pos, 0.35, S.target);
+  spawnTarget(camera.position.clone().addScaledVector(dir, 12), 0.2, {life:0.95});
 }
 function botSpot(dmin, dmax, ymax){
   const yw = rand(-ymax, ymax) * Math.PI / 180, d = rand(dmin, dmax);
@@ -873,8 +793,11 @@ function botSpot(dmin, dmax, ymax){
 function spawnBotTrack(){ const s = botSpot(8, 13, 25); placeBot(s.x, s.z); }
 function spawnBotHead(){ const s = botSpot(8, 18, 32); placeBot(s.x, s.z); }
 
-/* ---------- strafing ---------- */
+/* ---------- strafing (stepped at <= 50 ms so slow frames do not change how it moves) ---------- */
 function updateStrafe(dt, cfg){
+  for (let left = dt; left > 1e-6; left -= 0.05) strafeStep(Math.min(0.05, left), cfg);
+}
+function strafeStep(dt, cfg){
   bot.switchT -= dt;
   if (bot.switchT <= 0){
     if (Math.random() < cfg.stop) bot.want = 0;
@@ -901,7 +824,7 @@ const HEAD_CFG  = {vmin:3.5, vmax:5.2, tmin:0.25, tmax:0.75, accel:38, stop:0.25
 
 /* ---------- shooting ---------- */
 function recordFlick(tgtPos, r){
-  // error of this shot relative to the target, in the frame of the flick direction
+  // where this shot landed relative to the target, in the frame of the flick direction
   if (!MODES[R.mode].flick) return;
   const to = _v.copy(tgtPos).sub(camera.position);
   const ty = yawOf(to), tp = pitchOf(to), dist = to.length();
@@ -910,10 +833,9 @@ function recordFlick(tgtPos, r){
   const ex = -wrap(yaw - ty) * cos, ey = pitch - tp;
   let fx = -wrap(ty - R.flickStart.y) * cos, fy = tp - R.flickStart.p;
   const fl = Math.hypot(fx, fy);
-  if (fl < ar * 2) return; // not a flick, a correction
+  if (fl < ar * 2) return; // a correction, not a flick
   fx /= fl; fy /= fl;
-  const along = (ex * fx + ey * fy) / ar, perp = (ex * -fy + ey * fx) / ar;
-  R.flicks.push({a:along, p:perp, flick:fl * 180 / Math.PI});
+  R.flicks.push({a:(ex * fx + ey * fy) / ar, p:(ex * -fy + ey * fx) / ar});
 }
 function nearestTarget(){
   let best = null, ba = 1e9; forward(_d);
@@ -921,18 +843,16 @@ function nearestTarget(){
   return best;
 }
 let hitFlash = 0, hitKind = 'hit';
-function popText(txt, color = '#fff'){
-  const el = document.createElement('div'); el.className = 'pop'; el.textContent = txt; el.style.color = color; UI.hud.appendChild(el);
-  setTimeout(() => el.remove(), 720);
+function popText(txt, color){
+  const el = document.createElement('div'); el.className = 'pop'; el.textContent = txt; if (color) el.style.color = color; UI.hud.appendChild(el);
+  setTimeout(() => el.remove(), 640);
 }
 function registerKill(pts, pos, color, r){
   R.kills++; R.hits++; R.streak++; R.bestStreak = Math.max(R.bestStreak, R.streak);
   R.score += pts;
-  burst(pos, color, 22 + Math.min(R.streak, 20), 4.5 + r * 4, Math.max(0.035, r * 0.16));
-  ring(pos, r * 1.25, color);
-  if (S.xh.hit){ hitFlash = 1; }
-  popText('+' + pts, R.streak >= 10 ? '#ffb612' : '#fff');
-  if (R.streak > 0 && R.streak % 25 === 0) Sfx.fill();
+  burst(pos, color, 16 + Math.min(R.streak, 16), 4.5 + r * 4, Math.max(0.04, r * 0.18));
+  hitFlash = 1;
+  popText('+' + pts, R.streak >= 10 ? '#ffb612' : null);
   R.flickStart = {y:yaw, p:pitch};
   R.lastKillT = R.t;
 }
@@ -960,7 +880,7 @@ function shoot(){
       Sfx.kill(R.streak);
       const cell = hit.cell;
       killTarget(hit);
-      registerKill(pts, pos, S.target, r);
+      registerKill(pts, pos, TARGET, r);
       if (m === 'grid'){
         const used = new Set(targets.map(t => t.cell)); used.add(cell);
         const free = [0,1,2,3,4,5,6,7,8].filter(c => !used.has(c));
@@ -981,22 +901,26 @@ function shoot(){
       const pts = 100 + Math.max(0, Math.round((1300 - ttk) / 9));
       const pos = new THREE.Vector3(bot.x, bot.y + bot.headY, bot.z);
       hitKind = 'head'; Sfx.head(); Sfx.kill(R.streak);
-      registerKill(pts, pos, '#ffffff', 0.3); burst(pos, S.target, 16, 3, 0.05);
+      registerKill(pts, pos, TARGET, 0.3);
       hideBot(); bot.respawnAt = R.t + 0.18;
     } else if (h === 'body'){
       R.bodies++; R.hits++; R.streak = 0; bot.flash = 0.5; Sfx.body();
-      hitKind = 'body'; if (S.xh.hit) hitFlash = 0.7;
+      hitKind = 'body'; hitFlash = 0.7;
     } else { R.streak = 0; Sfx.miss(); }
   }
   updateHud();
 }
 
-/* ---------- per-frame round logic ---------- */
+/* ---------- per-frame round logic. dt is real time (capped at 0.25 s), so the clock never drifts on slow frames ---------- */
 function updateRound(dt){
   if (state === 'countdown'){
     R.cd -= dt;
     const n = Math.ceil(R.cd);
-    if (n !== R.lastBeep && n > 0){ R.lastBeep = n; Sfx.beep(false); const el = $('#hCount'); el.textContent = n; el.style.transition = 'none'; el.style.opacity = 1; el.style.transform = 'scale(1.25)'; requestAnimationFrame(() => { el.style.transition = 'opacity .8s, transform .8s'; el.style.opacity = 0; el.style.transform = 'scale(1)'; }); }
+    if (n !== R.lastBeep && n > 0){
+      R.lastBeep = n; Sfx.beep(false);
+      const el = hudEl.count; el.textContent = n; el.style.transition = 'none'; el.style.opacity = 1;
+      requestAnimationFrame(() => { el.style.transition = 'opacity .7s steps(4)'; el.style.opacity = 0; });
+    }
     if (R.cd <= 0) beginPlay();
     return;
   }
@@ -1005,9 +929,9 @@ function updateRound(dt){
   const m = R.mode;
   if (m === 'reflex'){
     for (const t of targets.slice()){
-      const age = R.t - t.spawnT, k = age / t.life;
-      t.mesh.scale.setScalar(t.r * (1 - 0.35 * k));
-      t.mesh.material.uniforms.uFade.value = 1 - 0.4 * k;
+      const k = (R.t - t.spawnT) / t.life;
+      t.mesh.scale.setScalar(t.r * (1 - 0.35 * Math.min(1, k)));
+      t.mesh.material.uniforms.uFade.value = 1 - 0.4 * Math.min(1, k);
       if (k >= 1){ killTarget(t); R.expired++; R.streak = 0; R.nextSpawn = R.t + rand(0.35, 0.9); updateHud(); }
     }
     if (!targets.length && R.t >= R.nextSpawn){ spawnReflex(); R.nextSpawn = 1e9; }
@@ -1025,12 +949,11 @@ function updateRound(dt){
           bot.hp -= dt * (h === 'head' ? 210 : 130);
           R.score += dt * (h === 'head' ? 160 : 100);
           bot.flash = 0.45;
-          if (R.t - R.lastTick > 0.075){ R.lastTick = R.t; Sfx.tick(); if (S.xh.hit){ hitFlash = 0.55; hitKind = h === 'head' ? 'head' : 'hit'; } }
+          if (R.t - R.lastTick > 0.075){ R.lastTick = R.t; Sfx.tick(); hitFlash = 0.55; hitKind = h === 'head' ? 'head' : 'hit'; }
           if (bot.hp <= 0){
-            const ttk = (R.t - bot.spawnT) * 1000; R.ttks.push(ttk);
-            const pos = new THREE.Vector3(bot.x, bot.y + 1.1, bot.z);
+            R.ttks.push((R.t - bot.spawnT) * 1000);
             Sfx.kill(R.streak); hitKind = 'kill';
-            registerKill(100, pos, S.target, 0.6); R.hits--;
+            registerKill(100, new THREE.Vector3(bot.x, bot.y + 1.1, bot.z), TARGET, 0.6); R.hits--;
             hideBot(); bot.respawnAt = R.t + 0.3;
           }
         }
@@ -1044,24 +967,28 @@ function updateRound(dt){
     if (bot.alive){ updateStrafe(dt, HEAD_CFG); bot.flash = Math.max(0, bot.flash - dt * 4); syncBot(); }
     else if (R.t >= bot.respawnAt) spawnBotHead();
   }
-  for (const t of targets){ if (t.flash > 0){ t.flash = Math.max(0, t.flash - dt * 6); t.mesh.material.uniforms.uFlash.value = t.flash; } }
-  const left = Math.max(0, ROUND_LEN - R.t);
-  const secs = Math.ceil(left); $('#hTime').textContent = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
-  $('#hBar').style.transform = `scaleX(${left / ROUND_LEN})`;
-  if (left <= 5 && Math.ceil(left) !== R.lastBeep && left > 0){ R.lastBeep = Math.ceil(left); Sfx.tone(1000, 0.05, {v:0.06}); }
+  updateClock();
+  const left = ROUND_LEN - R.t;
+  if (left <= 5 && Math.ceil(left) !== R.lastBeep && left > 0){ R.lastBeep = Math.ceil(left); Sfx.tone(1000, 0.05, {type:'square', v:0.04}); }
   if (left <= 0) endRound();
+}
+let clockShown = '';
+function updateClock(){
+  const left = Math.max(0, ROUND_LEN - (R && state === 'play' ? R.t : 0));
+  const secs = Math.ceil(left), txt = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+  if (txt !== clockShown){ clockShown = txt; hudEl.time.textContent = txt; hudEl.bar.classList.toggle('low', left <= 10); }
+  hudEl.bar.style.transform = `scaleX(${(Math.round(left / ROUND_LEN * 60) / 60).toFixed(4)})`;
 }
 
 function updateHud(){
   if (!R) return;
-  $('#hScore').textContent = fmt(Math.round(R.score));
+  hudEl.score.textContent = fmt(Math.round(R.score));
   const m = R.mode;
-  if (m === 'track') $('#hAcc').textContent = R.firing > 0 ? fmt(100 * R.onTarget / R.firing, 1) + '%' : '-';
-  else $('#hAcc').textContent = R.shots ? fmt(100 * R.hits / R.shots, 1) + '%' : '-';
-  if (m === 'reflex') $('#hKills').textContent = R.reactions.length ? fmt(avg(R.reactions)) + 'ms' : '-';
-  else $('#hKills').textContent = R.kills;
-  const st = $('#hStreak');
-  if (R.streak >= 5){ st.textContent = `${R.streak} STREAK`; st.style.opacity = 1; } else st.style.opacity = 0;
+  if (m === 'track') hudEl.acc.textContent = R.firing > 0 ? Math.round(100 * R.onTarget / R.firing) + '%' : '-';
+  else if (m === 'reflex') hudEl.acc.innerHTML = R.reactions.length ? fmt(avg(R.reactions)) + '<small>ms</small>' : '-';
+  else hudEl.acc.textContent = R.shots ? Math.round(100 * R.hits / R.shots) + '%' : '-';
+  if (R.streak >= 5){ hudEl.streak.textContent = `${R.streak} in a row`; hudEl.streak.style.visibility = 'visible'; }
+  else hudEl.streak.style.visibility = 'hidden';
 }
 const avg = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : NaN;
 const median = a => { if (!a.length) return NaN; const b = a.slice().sort((x, y) => x - y); const m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
@@ -1071,31 +998,20 @@ const median = a => { if (!a.length) return NaN; const b = a.slice().sort((x, y)
    ===================================================================== */
 let xhDirty = true;
 function drawCrosshair(g, cx, cy, s, xh, hf, kind){
-  const col = xh.color, a = xh.alpha;
   const L = Math.round(xh.length * s), T = Math.max(1, Math.round(xh.thickness * s)), G = Math.round(xh.gap * s), O = Math.max(1, Math.round(xh.outlineW * s));
   cx = Math.round(cx - T / 2); cy = Math.round(cy - T / 2);
   const rects = [];
-  if (xh.style === 'classic'){
-    rects.push([cx + T + G, cy, L, T], [cx - G - L, cy, L, T], [cx, cy + T + G, T, L]);
-    if (!xh.t) rects.push([cx, cy - G - L, T, L]);
-  }
-  if (xh.dot || xh.style === 'dot') rects.push([cx, cy, T, T]);
-  g.globalAlpha = a;
-  if (xh.outline){ g.fillStyle = '#000'; for (const [x, y, w, h] of rects) g.fillRect(x - O, y - O, w + 2 * O, h + 2 * O); }
-  g.fillStyle = col; for (const [x, y, w, h] of rects) g.fillRect(x, y, w, h);
-  if (xh.style === 'circle'){
-    const rr = G + L / 2 + T, ccx = cx + T / 2, ccy = cy + T / 2;
-    if (xh.outline){ g.strokeStyle = '#000'; g.lineWidth = T + 2 * O; g.beginPath(); g.arc(ccx, ccy, rr, 0, Math.PI * 2); g.stroke(); }
-    g.strokeStyle = col; g.lineWidth = T; g.beginPath(); g.arc(ccx, ccy, rr, 0, Math.PI * 2); g.stroke();
-  }
-  g.globalAlpha = 1;
+  if (L > 0) rects.push([cx + T + G, cy, L, T], [cx - G - L, cy, L, T], [cx, cy + T + G, T, L], [cx, cy - G - L, T, L]);
+  if (xh.dot || L === 0) rects.push([cx, cy, T, T]);
+  if (xh.outline){ g.fillStyle = '#0d0b1a'; for (const [x, y, w, h] of rects) g.fillRect(x - O, y - O, w + 2 * O, h + 2 * O); }
+  g.fillStyle = xh.color; for (const [x, y, w, h] of rects) g.fillRect(x, y, w, h);
   if (hf > 0){
-    const c2 = kind === 'head' ? '255,182,18' : kind === 'body' ? '160,175,190' : '255,255,255';
-    g.strokeStyle = `rgba(${c2},${Math.min(1, hf * 1.2)})`; g.lineWidth = Math.max(1.5, 2 * s);
-    const i = (G + L + 4 * s), o = i + 6 * s, mx = cx + T / 2, my = cy + T / 2;
-    g.beginPath();
-    for (const [dx, dy] of [[1,1],[1,-1],[-1,1],[-1,-1]]){ g.moveTo(mx + dx * i * 0.7, my + dy * i * 0.7); g.lineTo(mx + dx * o * 0.7, my + dy * o * 0.7); }
-    g.stroke();
+    // hit marker: four square-stepped diagonals
+    g.globalAlpha = Math.min(1, hf * 1.3);
+    g.fillStyle = kind === 'head' ? '#ffb612' : kind === 'body' ? '#a7abbe' : '#fffaf0';
+    const px = Math.max(2, Math.round(2 * s)), i0 = G + L + Math.round(3 * s), mx = cx + T / 2, my = cy + T / 2;
+    for (const [dx, dy] of [[1,1],[1,-1],[-1,1],[-1,-1]]) for (let k = 0; k < 3; k++){ const d = i0 * 0.7 + k * px; g.fillRect(Math.round(mx + dx * d - px / 2), Math.round(my + dy * d - px / 2), px, px); }
+    g.globalAlpha = 1;
   }
 }
 function renderXH(){
@@ -1109,176 +1025,143 @@ function renderXPrev(){
   if (!r.width) return;
   c.width = Math.round(r.width * d); c.height = Math.round(r.height * d);
   const g = c.getContext('2d'); g.clearRect(0, 0, c.width, c.height);
-  drawCrosshair(g, c.width * 0.27, c.height / 2, d * 2, S.xh, 0);
-  drawCrosshair(g, c.width * 0.73, c.height / 2, d * 2, S.xh, 0);
+  drawCrosshair(g, c.width * 0.25, c.height / 2, d * 2, S.xh, 0);
+  drawCrosshair(g, c.width * 0.75, c.height / 2, d * 2, S.xh, 0);
 }
 
 /* =====================================================================
-   MENU UI
+   TITLE + SETTINGS
    ===================================================================== */
-function renderModes(){
+function renderTitle(){
   const el = $('#modes'); el.innerHTML = '';
   for (const id in MODES){
-    const m = MODES[id], b = BEST[id];
-    const btn = document.createElement('button'); btn.className = 'mode' + (id === modeId ? ' on' : '');
-    btn.innerHTML = `${GLYPHS[m.glyph]}<span class="k">${m.key}</span><h3>${m.name}</h3><p>${m.desc}</p><span class="best">${b ? `BEST <b>${fmt(b)}</b>` : 'NO SCORE YET'}</span>`;
-    btn.onclick = () => { modeId = id; S.mode = id; saveS(); Sfx.ui(); renderModes(); renderSummary(); };
-    btn.ondblclick = () => { modeId = id; startRound(id); };
-    el.appendChild(btn);
+    const b = document.createElement('button'); b.className = 'btn'; b.textContent = MODES[id].name;
+    b.setAttribute('aria-pressed', String(id === modeId));
+    b.onclick = () => { modeId = id; S.mode = id; saveS(); Sfx.ui(); renderTitle(); };
+    b.ondblclick = () => { modeId = id; startRound(id); };
+    el.appendChild(b);
   }
+  $('#lead').textContent = MODES[modeId].lead;
+  const best = BEST[modeId];
+  $('#tBest').innerHTML = best ? `Best <b class="d">${fmt(best)}</b>` : '';
+  renderSens();
 }
-function renderSummary(){
-  const s = sensSummary();
-  const raw = rawInput === true ? '<span class="raw-on">raw input on</span>' : rawInput === false ? '<span class="raw-off">raw input unavailable, OS acceleration may apply</span>' : 'raw input checked on start';
-  $('#sum').innerHTML = `<b>${MODES[modeId].name}</b> &middot; ${s.label} @ ${S.dpi} DPI &middot; <b>${fmt(s.cm, 2)} cm/360</b><br>FOV ${S.fov} ${fovTypeName(S.fovType)} &middot; ${raw}`;
+function renderSens(){
+  $('#tSens').innerHTML = `${sensLabel()} &middot; ${D(fmt(cm360(), 1))} cm/360`;
   const note = $('#rawNote');
-  if (note) note.innerHTML = rawInput === false
-    ? '<b>Heads up:</b> this browser would not give raw mouse input, so OS pointer acceleration could change your effective sens. Turn off "Enhance pointer precision" (Windows) or use Chrome/Edge.'
-    : 'The trainer rotates by <b>sens x yaw</b> per raw mouse count, the same way the game does, so the turn per inch is identical. DPI only matters for the cm/360 readout. Uses raw (unaccelerated) mouse input in Chrome and Edge.';
+  note.textContent = rawInput === false ? 'This browser gave no raw mouse input, so OS pointer acceleration can change the turn. Chrome or Edge on Windows give raw input.' : '';
+  note.className = rawInput === false ? 'note warn' : 'note';
 }
-const fovTypeName = t => t === 'h43' ? 'horiz 4:3' : t === 'h169' ? 'horiz 16:9' : 'vertical';
-
-function setupTabs(){
-  $('#tabs').addEventListener('click', e => {
-    const b = e.target.closest('button'); if (!b) return;
-    for (const x of $('#tabs').children) x.classList.toggle('on', x === b);
-    document.querySelectorAll('[data-panel]').forEach(p => p.classList.toggle('hidden', p.dataset.panel !== b.dataset.tab));
-    Sfx.ui();
-    if (b.dataset.tab === 'xhair') requestAnimationFrame(renderXPrev);
-  });
+let settingsFrom = 'title';
+function openSettings(from = 'title', tab){
+  settingsFrom = from;
+  show(['settings', 'corner']);
+  if (tab) selectTab(tab);
+  syncSens(); syncVideo(); requestAnimationFrame(renderXPrev);
 }
-function selectTab(name){ const b = document.querySelector(`#tabs [data-tab=${name}]`); b && b.click(); }
-
-function setupSens(){
+function closeSettings(){ if (settingsFrom === 'touch') show(['touch', 'corner']); else { renderTitle(); show(['title', 'corner']); } }
+function selectTab(name){
+  for (const x of $('#stabs').children) x.setAttribute('aria-pressed', String(x.dataset.tab === name));
+  document.querySelectorAll('[data-panel]').forEach(p => p.classList.toggle('hidden', p.dataset.panel !== name));
+  if (name === 'xhair') requestAnimationFrame(renderXPrev);
+  if (name === 'view') syncVideo();
+}
+function setupSettings(){
+  $('#stabs').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; Sfx.ui(); selectTab(b.dataset.tab); });
   const sel = $('#sGame');
-  sel.innerHTML = GAMES.map(g => `<option value="${g.id}">${g.name}${g.sub ? ' (' + g.sub + ')' : ''}${g.approx ? ' ~' : ''}</option>`).join('') + '<option disabled>──────────</option>' + SPECIAL.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+  sel.innerHTML = GAMES.map(g => `<option value="${g.id}">${g.name}</option>`).join('') + SPECIAL.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
   sel.value = S.game;
   $('#sSens').value = S.sens; $('#sDpi').value = S.dpi; $('#sCm').value = S.cm; $('#sYaw').value = S.customYaw; $('#sInv').checked = S.invertY;
-  const chips = $('#dpiChips');
-  chips.innerHTML = [400, 800, 1600, 3200].map(d => `<button class="chip" data-d="${d}">${d}</button>`).join('');
-  chips.onclick = e => { const b = e.target.closest('[data-d]'); if (!b) return; S.dpi = +b.dataset.d; $('#sDpi').value = S.dpi; syncSens(); };
   sel.onchange = () => {
-    // keep the same cm/360 when switching games
-    const dpc = degPerCount(); const was = cm360();
+    // switching game keeps the same physical turn
+    const dpc = degPerCount();
     S.game = sel.value;
-    if (S.game === 'cm') S.cm = +was.toFixed(2);
+    if (S.game === 'cm') S.cm = +(914.4 / (dpc * S.dpi)).toFixed(2);
     else if (S.game === 'custom') S.sens = +(dpc / S.customYaw).toFixed(4);
-    else { const g = gameById(S.game); S.sens = +(dpc / g.yaw).toFixed(g.dp + 1); }
+    else S.sens = convert(gameById(S.game), dpc).rounded || +(dpc / gameById(S.game).yaw).toFixed(4);
     $('#sSens').value = S.sens; $('#sCm').value = S.cm;
     syncSens();
   };
-  const num = (el, key, min) => el.addEventListener('input', () => { const v = parseFloat(el.value); if (Number.isFinite(v) && v >= min){ S[key] = v; syncSens(true); } });
+  const num = (el, key, min) => el.addEventListener('input', () => { const v = parseFloat(el.value); if (Number.isFinite(v) && v >= min){ S[key] = v; syncSens(); } });
   num($('#sSens'), 'sens', 0.0001); num($('#sDpi'), 'dpi', 50); num($('#sCm'), 'cm', 1); num($('#sYaw'), 'customYaw', 0.000001);
   $('#sInv').onchange = e => { S.invertY = e.target.checked; saveS(); };
   $('#convBody').onclick = e => {
     const b = e.target.closest('[data-use]'); if (!b) return;
-    const g = gameById(b.dataset.use), dpc = degPerCount();
-    S.game = g.id; S.sens = +(dpc / g.yaw).toFixed(g.dp + 1);
+    const g = gameById(b.dataset.use), c = convert(g);
+    S.game = g.id; S.sens = c.rounded || +c.exact.toFixed(4);
     sel.value = S.game; $('#sSens').value = S.sens; syncSens(); Sfx.ui();
   };
-  syncSens();
+
+  const cols = ['#4dff8a', '#ffff00', '#00ffff', '#fffaf0', '#ff4dff', '#d9483b'];
+  $('#xColors').innerHTML = cols.map(c => `<button class="sw" data-c="${c}" style="background:${c}" aria-label="Crosshair color ${c}"></button>`).join('');
+  $('#xColors').onclick = e => { const b = e.target.closest('[data-c]'); if (!b) return; S.xh.color = b.dataset.c; syncXH(); };
+  const sl = [['length', 'Length', 0, 16, 1], ['thickness', 'Thickness', 1, 5, 1], ['gap', 'Gap', -1, 10, 1]];
+  $('#xSliders').innerHTML = sl.map(([k, n, a, b, s]) => `<div class="rng"><span>${n}</span><input type="range" data-k="${k}" min="${a}" max="${b}" step="${s}" aria-label="${n}"><output data-o="${k}"></output></div>`).join('');
+  $('#xSliders').oninput = e => { const k = e.target.dataset.k; if (!k) return; S.xh[k] = parseFloat(e.target.value); syncXH(); };
+  $('#xOutline').onchange = e => { S.xh.outline = e.target.checked; syncXH(); };
+  $('#xDot').onchange = e => { S.xh.dot = e.target.checked; syncXH(); };
+
+  $('#vFov').value = S.fov;
+  $('#vFovType').innerHTML = [['h43', 'Horizontal 4:3'], ['h169', 'Horizontal 16:9'], ['v', 'Vertical']].map(([k, n]) => `<button class="btn sm" data-t="${k}">${n}</button>`).join('');
+  $('#vFovType').onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; S.fovType = b.dataset.t; syncVideo(); };
+  $('#vFovPresets').innerHTML = FOV_PRESETS.map((p, i) => `<button class="btn sm" data-i="${i}">${p.n}</button>`).join('');
+  $('#vFovPresets').onclick = e => { const b = e.target.closest('[data-i]'); if (!b) return; const p = FOV_PRESETS[+b.dataset.i]; S.fov = p.fov; S.fovType = p.t; $('#vFov').value = S.fov; syncVideo(); };
+  $('#vFov').oninput = e => { S.fov = +e.target.value; syncVideo(); };
+  syncSens(); syncXH(); syncVideo();
 }
-function syncSens(fromInput){
-  const isCm = S.game === 'cm', isCustom = S.game === 'custom';
+function syncSens(){
+  const isCm = S.game === 'cm', isCustom = S.game === 'custom', g = gameById(S.game);
   $('#fCm').classList.toggle('hidden', !isCm);
   $('#fSens').classList.toggle('hidden', isCm);
   $('#fYaw').classList.toggle('hidden', !isCustom);
-  const g = gameById(S.game);
-  $('#sSensL').textContent = g && g.unit === '%' ? 'X-axis sensitivity (%)' : 'In-game sensitivity';
-  for (const c of $('#dpiChips').children) c.classList.toggle('on', +c.dataset.d === S.dpi);
+  $('#sSensL').textContent = g && g.unit === '%' ? 'X-axis sensitivity (%)' : 'Sensitivity';
   const dpc = degPerCount(), cm = 914.4 / (dpc * S.dpi);
-  $('#rCm').innerHTML = `${fmt(cm, 2)}<span>cm</span>`;
-  $('#rIn').textContent = fmt(cm / 2.54, 2) + ' in';
-  $('#rEdpi').textContent = isCm || isCustom ? '-' : fmt(S.sens * S.dpi / (g && g.unit === '%' ? 100 : 1), g && g.unit === '%' ? 1 : 0);
-  $('#rDeg').textContent = dpc.toPrecision(4) + '°';
-  $('#rCounts').textContent = fmt(360 / dpc, 0);
-  $('#convDpi').textContent = `@ ${S.dpi} DPI`;
+  $('#rCm').innerHTML = `${fmt(cm, 2)}<small>cm/360</small>`;
+  $('#rSub').innerHTML = `${D(fmt(cm / 2.54, 2))} in &middot; ${D(dpc.toPrecision(4))}° per count`;
   $('#convBody').innerHTML = GAMES.map(gm => {
-    const exact = dpc / gm.yaw, rounded = +exact.toFixed(gm.dp);
-    const err = rounded > 0 ? 914.4 / (rounded * gm.yaw * S.dpi) - cm : 0;
-    const cur = gm.id === S.game;
-    return `<tr class="${cur ? 'cur' : ''}"><td>${gm.name}${gm.approx ? '<span class="tag">~</span>' : ''}${Math.abs(err) >= 0.05 ? `<span class="tag">${err > 0 ? '+' : ''}${err.toFixed(2)}cm</span>` : ''}</td><td class="n">${rounded.toFixed(gm.dp)}${gm.unit}</td><td class="n" style="color:var(--faint)">${gm.yaw}</td><td class="n">${fmt(rounded * S.dpi / (gm.unit === '%' ? 100 : 1), gm.unit === '%' ? 1 : 0)}</td><td class="n">${cur ? '' : `<button data-use="${gm.id}">use</button>`}</td></tr>`;
+    const c = convert(gm, dpc), cur = gm.id === S.game;
+    const errTxt = Number.isFinite(c.err) && Math.abs(c.err) >= 0.05 ? `${c.err > 0 ? '+' : ''}${c.err.toFixed(1)} cm` : '';
+    const val = c.rounded > 0 ? c.rounded.toFixed(gm.dp) + (gm.unit || '') : 'too low';
+    return `<tr class="${cur ? 'cur' : ''}"><td>${gm.name}</td><td class="n">${val}</td><td class="e">${errTxt}</td><td>${cur ? '' : `<button class="btn sm" data-use="${gm.id}">Use</button>`}</td></tr>`;
   }).join('');
-  saveS(); renderSummary();
-}
-
-function setupXH(){
-  const presets = {
-    'Tight': {style:'classic', length:4, thickness:1, gap:1, outline:true, dot:false, t:false},
-    'Classic': {style:'classic', length:6, thickness:2, gap:3, outline:true, dot:false, t:false},
-    'Long': {style:'classic', length:10, thickness:1, gap:4, outline:false, dot:true, t:false},
-    'Dot': {style:'dot', thickness:4, outline:true, dot:true},
-    'Circle': {style:'circle', length:6, thickness:1, gap:6, outline:true, dot:true},
-  };
-  const pe = $('#xPresets'); pe.innerHTML = Object.keys(presets).map(k => `<button data-p="${k}">${k}</button>`).join('');
-  pe.onclick = e => { const b = e.target.closest('[data-p]'); if (!b) return; Object.assign(S.xh, presets[b.dataset.p]); syncXH(); };
-  const st = $('#xStyle'); st.innerHTML = ['classic', 'dot', 'circle'].map(s => `<button data-s="${s}">${s[0].toUpperCase() + s.slice(1)}</button>`).join('');
-  st.onclick = e => { const b = e.target.closest('[data-s]'); if (!b) return; S.xh.style = b.dataset.s; syncXH(); };
-  const cols = ['#4dff8a', '#00ffff', '#ffff00', '#ff3b5c', '#ff4dff', '#ffffff', '#ffb612'];
-  const ce = $('#xColors'); ce.innerHTML = cols.map(c => `<button class="sw" data-c="${c}" style="background:${c}" aria-label="${c}"></button>`).join('') + `<input type="color" id="xColorPick" aria-label="Custom color">`;
-  ce.onclick = e => { const b = e.target.closest('[data-c]'); if (!b) return; S.xh.color = b.dataset.c; syncXH(); };
-  $('#xColorPick').oninput = e => { S.xh.color = e.target.value; syncXH(); };
-  const sl = [['length', 'Length', 0, 20, 1], ['thickness', 'Thickness', 1, 6, 0.5], ['gap', 'Gap', -2, 12, 1], ['outlineW', 'Outline px', 1, 3, 1], ['alpha', 'Opacity', 0.2, 1, 0.05]];
-  $('#xSliders').innerHTML = sl.map(([k, n, a, b, s]) => `<div class="slider"><span>${n}</span><input type="range" data-k="${k}" min="${a}" max="${b}" step="${s}"><output data-o="${k}"></output></div>`).join('');
-  $('#xSliders').oninput = e => { const k = e.target.dataset.k; if (!k) return; S.xh[k] = parseFloat(e.target.value); syncXH(); };
-  for (const [id, k] of [['xOutline', 'outline'], ['xDot', 'dot'], ['xT', 't'], ['xHit', 'hit']]) $('#' + id).onchange = e => { S.xh[k] = e.target.checked; syncXH(); };
-  syncXH();
+  saveS(); renderSens();
 }
 function syncXH(){
-  for (const b of $('#xStyle').children) b.classList.toggle('on', b.dataset.s === S.xh.style);
-  for (const b of $('#xColors').querySelectorAll('.sw')) b.classList.toggle('on', b.dataset.c.toLowerCase() === S.xh.color.toLowerCase());
-  $('#xColorPick').value = S.xh.color;
+  for (const b of $('#xColors').children) b.setAttribute('aria-pressed', String(b.dataset.c.toLowerCase() === S.xh.color.toLowerCase()));
   for (const i of $('#xSliders').querySelectorAll('input')){ i.value = S.xh[i.dataset.k]; $(`[data-o=${i.dataset.k}]`).textContent = S.xh[i.dataset.k]; }
-  $('#xOutline').checked = S.xh.outline; $('#xDot').checked = S.xh.dot; $('#xT').checked = S.xh.t; $('#xHit').checked = S.xh.hit;
+  $('#xOutline').checked = S.xh.outline; $('#xDot').checked = S.xh.dot;
   saveS(); renderXPrev(); xhDirty = true;
-}
-
-const TARGET_COLORS = ['#3be8ff', '#ff3b5c', '#ffd23b', '#4dff8a', '#ff6bd6', '#f2f5f8'];
-function setTargetColor(c){
-  S.target = c;
-  for (const t of pool) t.mesh.material.uniforms.uColor.value.set(c);
-  bot.headMat.uniforms.uColor.value.set(c);
-  for (const b of $('#vTarget').querySelectorAll('.sw')) b.classList.toggle('on', b.dataset.c === c);
-  saveS();
-}
-function setupVideo(){
-  $('#vFov').value = S.fov;
-  const ft = $('#vFovType'); ft.innerHTML = [['h43', 'Horizontal 4:3'], ['h169', 'Horizontal 16:9'], ['v', 'Vertical']].map(([k, n]) => `<button data-t="${k}">${n}</button>`).join('');
-  ft.onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; S.fovType = b.dataset.t; syncVideo(); };
-  const fp = $('#vFovPresets'); fp.innerHTML = FOV_PRESETS.map((p, i) => `<button data-i="${i}">${p.n}</button>`).join('');
-  fp.onclick = e => { const b = e.target.closest('[data-i]'); if (!b) return; const p = FOV_PRESETS[+b.dataset.i]; S.fov = p.fov; S.fovType = p.t; $('#vFov').value = S.fov; syncVideo(); };
-  $('#vFov').oninput = e => { S.fov = +e.target.value; syncVideo(); };
-  $('#vTarget').innerHTML = TARGET_COLORS.map(c => `<button class="sw" data-c="${c}" style="background:${c}" aria-label="${c}"></button>`).join('');
-  $('#vTarget').onclick = e => { const b = e.target.closest('[data-c]'); if (!b) return; setTargetColor(b.dataset.c); };
-  const sc = $('#vScale'); sc.innerHTML = [['auto', 'Auto'], ['1', '1x'], ['0.75', '0.75x']].map(([k, n]) => `<button data-s="${k}">${n}</button>`).join('');
-  sc.onclick = e => { const b = e.target.closest('[data-s]'); if (!b) return; S.scale = b.dataset.s; syncVideo(); resize(); };
-  $('#vVol').value = S.volume; $('#vVol').oninput = e => { S.volume = +e.target.value; Sfx.vol(S.volume); syncVideo(); };
-  $('#vFps').checked = S.showFps; $('#vFps').onchange = e => { S.showFps = e.target.checked; syncVideo(); };
-  syncVideo(); setTargetColor(S.target);
 }
 function syncVideo(){
   $('#vFovO').textContent = S.fov;
-  for (const b of $('#vFovType').children) b.classList.toggle('on', b.dataset.t === S.fovType);
-  for (const b of $('#vScale').children) b.classList.toggle('on', b.dataset.s === S.scale);
-  for (const b of $('#vFovPresets').children){ const p = FOV_PRESETS[+b.dataset.i]; b.classList.toggle('on', p.fov === S.fov && p.t === S.fovType); }
-  $('#vVolO').textContent = Math.round(S.volume * 100);
-  $('#hFps').classList.toggle('hidden', !S.showFps);
+  for (const b of $('#vFovType').children) b.setAttribute('aria-pressed', String(b.dataset.t === S.fovType));
+  for (const b of $('#vFovPresets').children){ const p = FOV_PRESETS[+b.dataset.i]; b.setAttribute('aria-pressed', String(p.fov === S.fov && p.t === S.fovType)); }
   applyFov();
   const v = verticalFov(), h = 2 * Math.atan(Math.tan(v * Math.PI / 360) * camera.aspect) * 180 / Math.PI;
-  $('#vFovNote').innerHTML = `At this window's aspect: <b>${h.toFixed(1)}°</b> horizontal, <b>${v.toFixed(1)}°</b> vertical. CS2 and Apex measure FOV as horizontal at 4:3; Valorant and Overwatch 2 as horizontal at 16:9.`;
-  saveS(); renderSummary();
+  $('#vFovNote').innerHTML = `${D(h.toFixed(1))}° wide, ${D(v.toFixed(1))}° tall in this window. FOV never changes your turn speed.`;
+  saveS();
 }
 
-/* ---------- sound / fullscreen buttons ---------- */
-const SND_ON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 6h3l4-3v10L5 10H2z" fill="currentColor"/><path d="M11 5.5a3.5 3.5 0 0 1 0 5M12.8 3.5a6 6 0 0 1 0 9"/></svg>';
-const SND_OFF = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 6h3l4-3v10L5 10H2z" fill="currentColor"/><path d="M11 6l4 4M15 6l-4 4"/></svg>';
-function syncSound(){ const b = $('#btnSound'); b.innerHTML = Sfx.on ? SND_ON : SND_OFF; b.classList.toggle('on', Sfx.on); }
-function toggleSound(){ Sfx.setOn(!Sfx.on); syncSound(); if (Sfx.on) Sfx.ui(); toast(Sfx.on ? 'Sound on' : 'Sound off', 900); }
+/* ---------- sound / full screen ---------- */
+const px = d => `<svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="${d}"/></svg>`;
+const SPK = 'M1 6h3v4H1zM4 5h2v6H4zM6 3h2v10H6z';
+const SND_ON = px(SPK + 'M10 6h2v4h-2zM13 4h2v8h-2z');
+const SND_OFF = px(SPK + 'M10 5h2v2h-2zM14 5h2v2h-2zM12 7h2v2h-2zM10 9h2v2h-2zM14 9h2v2h-2z');
+const FS_IN = px('M1 1h5v2H3v3H1zM10 1h5v5h-2V3h-3zM1 10h2v3h3v2H1zM13 10h2v5h-5v-2h3z');
+const FS_OUT = px('M4 1h2v5H1V4h3zM10 1h2v3h3v2h-5zM1 10h5v5H4v-3H1zM10 10h5v2h-3v3h-2z');
+function syncSound(){ const b = $('#btnSound'); b.innerHTML = Sfx.on ? SND_ON : SND_OFF; b.setAttribute('aria-pressed', String(Sfx.on)); b.setAttribute('aria-label', Sfx.on ? 'Sound on' : 'Sound off'); }
+function toggleSound(){ Sfx.setOn(!Sfx.on); S.sound = Sfx.on; saveS(); syncSound(); if (Sfx.on) Sfx.ui(); }
+// the house can also put this whole iframe in full screen; treat that as "full screen" too
+function parentFsFrame(){ try{ return window.frameElement && parent.document.fullscreenElement === window.frameElement; }catch(e){ return false; } }
+const isFs = () => !!(document.fullscreenElement || document.webkitFullscreenElement || parentFsFrame());
 function toggleFs(){
   const d = document;
-  if (d.fullscreenElement || d.webkitFullscreenElement){ (d.exitFullscreen || d.webkitExitFullscreen).call(d); }
-  else { const fn = app.requestFullscreen || app.webkitRequestFullscreen; if (fn) Promise.resolve(fn.call(app)).catch(() => toast('Fullscreen was blocked by the page embedding this game.')); }
+  if (d.fullscreenElement || d.webkitFullscreenElement){ (d.exitFullscreen || d.webkitExitFullscreen).call(d); return; }
+  if (parentFsFrame()){ try{ parent.document.exitFullscreen(); }catch(e){} return; }
+  const fn = app.requestFullscreen || app.webkitRequestFullscreen;
+  if (fn) Promise.resolve(fn.call(app)).catch(() => toast('Full screen was blocked.'));
 }
+function syncFs(){ const b = $('#btnFs'), on = isFs(); b.innerHTML = on ? FS_OUT : FS_IN; b.setAttribute('aria-pressed', String(on)); b.setAttribute('aria-label', on ? 'Exit full screen' : 'Full screen'); }
 
 /* =====================================================================
    RESULTS
@@ -1289,190 +1172,180 @@ function renderResults(){
   const prev = BEST[m] || 0, isBest = score > prev && score > 0;
   if (isBest){ BEST[m] = score; store.set('range06.best', BEST); }
   (HIST[m] = HIST[m] || []).push(score); if (HIST[m].length > 20) HIST[m].shift(); store.set('range06.hist', HIST);
-  $('#resMode').textContent = M.name + ' · 60s';
+  $('#resMode').textContent = M.name;
   $('#resScore').textContent = fmt(score);
-  $('#resBest').innerHTML = isBest ? `PREVIOUS BEST ${fmt(prev)} <span class="nb">NEW BEST</span>` : `BEST <b>${fmt(BEST[m] || score)}</b>`;
-  const acc = R.shots ? 100 * R.hits / R.shots : NaN;
+  $('#resBest').innerHTML = isBest ? `<span class="rec">New best</span>` : `Best <b class="d">${fmt(BEST[m] || score)}</b>`;
+  const acc = R.shots ? Math.round(100 * R.hits / R.shots) + '%' : '-';
+  const ms = v => Number.isFinite(v) ? fmt(v) + '<small>ms</small>' : '-';
   let cells;
-  if (m === 'track') cells = [['ON TARGET', fmt(R.firing ? 100 * R.onTarget / R.firing : NaN, 1) + '%'], ['BOTS DOWN', R.kills], ['AVG TTK', fmt(avg(R.ttks)) + 'ms'], ['TIME FIRING', fmt(R.firing, 1) + 's'], ['ON TARGET', fmt(R.onTarget, 1) + 's'], ['BEST STREAK', R.bestStreak]];
-  else if (m === 'reflex') cells = [['AVG REACTION', fmt(avg(R.reactions)) + 'ms'], ['BEST', fmt(Math.min(...R.reactions)) + 'ms'], ['ACCURACY', fmt(acc, 1) + '%'], ['HITS', R.kills], ['EXPIRED', R.expired], ['EARLY CLICKS', R.early]];
-  else if (m === 'head') cells = [['HEADSHOTS', R.heads], ['HS %', fmt((R.heads + R.bodies) ? 100 * R.heads / (R.heads + R.bodies) : NaN, 0) + '%'], ['ACCURACY', fmt(acc, 1) + '%'], ['AVG TTK', fmt(avg(R.ttks)) + 'ms'], ['MEDIAN TTK', fmt(median(R.ttks)) + 'ms'], ['BEST STREAK', R.bestStreak]];
-  else cells = [['ACCURACY', fmt(acc, 1) + '%'], ['KILLS', R.kills], ['KILLS / SEC', fmt(R.kills / ROUND_LEN, 2)], ['AVG TTK', fmt(avg(R.ttks)) + 'ms'], ['MEDIAN TTK', fmt(median(R.ttks)) + 'ms'], ['BEST STREAK', R.bestStreak]];
-  $('#resGrid').innerHTML = cells.map(([k, v]) => `<div><small>${k}</small><b>${String(v).replace('NaN', '-')}</b></div>`).join('');
-  const s = sensSummary();
-  $('#resSens').textContent = `${s.label} @ ${S.dpi} DPI · ${fmt(s.cm, 2)} cm/360 · FOV ${S.fov} ${fovTypeName(S.fovType)}${rawInput === true ? ' · raw' : ''}`;
-  requestAnimationFrame(() => { drawAnalysis(); drawSpark(); });
+  if (m === 'track') cells = [['On target', R.firing ? Math.round(100 * R.onTarget / R.firing) + '%' : '-'], ['Bots', R.kills], ['Avg kill', ms(avg(R.ttks))]];
+  else if (m === 'reflex') cells = [['Reaction', ms(median(R.reactions))], ['Hits', R.kills], ['Missed', R.expired]];
+  else if (m === 'head') cells = [['Headshots', R.heads], ['Head %', (R.heads + R.bodies) ? Math.round(100 * R.heads / (R.heads + R.bodies)) + '%' : '-'], ['Accuracy', acc]];
+  else cells = [['Accuracy', acc], ['Kills', R.kills], ['Avg kill', ms(avg(R.ttks))]];
+  $('#resStats').innerHTML = cells.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('');
+  fitResults();
+  requestAnimationFrame(drawAnalysis);
 }
-function prepCanvas(c){ const r = c.getBoundingClientRect(), d = devicePixelRatio || 1; c.width = Math.max(1, Math.round(r.width * d)); c.height = Math.max(1, Math.round(r.height * d)); const g = c.getContext('2d'); g.setTransform(d, 0, 0, d, 0, 0); return [g, r.width, r.height]; }
+function fitResults(){ $('#results').classList.toggle('narrow', app.clientWidth < 600 || app.clientHeight < 330); }
+const PAL = {ink:'#0d0b1a', n1:'#222b5c', n2:'#33438a', n3:'#4f69b5', n5:'#c4d4f2', cream:'#fffaf0', steel:'#a7abbe', gold:'#ffb612', red:'#d9483b'};
+function prepCanvas(c){
+  const r = c.getBoundingClientRect(), d = devicePixelRatio || 1;
+  c.width = Math.max(1, Math.round(r.width * d)); c.height = Math.max(1, Math.round(r.height * d));
+  const g = c.getContext('2d'); g.setTransform(d, 0, 0, d, 0, 0); g.imageSmoothingEnabled = false; return [g, r.width, r.height];
+}
 function drawAnalysis(){
+  if (!R || $('#results').classList.contains('narrow')) return;
   const c = $('#resCanvas'), [g, w, h] = prepCanvas(c), m = R.mode;
-  const css = getComputedStyle(document.documentElement);
-  const faint = 'rgba(140,170,200,.18)', dim = '#8b98a7', acc = S.target, gold = '#ffb612', bad = '#ff4d5e';
-  g.font = '10px "JetBrains Mono", monospace'; g.fillStyle = dim;
+  const fs = Math.max(10, Math.round(parseFloat(getComputedStyle(document.documentElement).fontSize) * 0.75));
+  g.font = `500 ${fs}px "Pixelify Sans", monospace`; g.textBaseline = 'alphabetic';
+  const numFont = `${Math.round(fs * 0.85)}px "Silkscreen", monospace`;
+  const sq = (x, y, s, col) => { g.fillStyle = col; g.fillRect(Math.round(x - s / 2), Math.round(y - s / 2), s, s); };
   let note = '';
   if (MODES[m].flick){
-    $('#anTitle').textContent = 'FLICK ANALYSIS';
-    const F = R.flicks, cx = w / 2, cy = h / 2, sc = Math.min(w, h) / 6.4; // 1 target radius = sc px
-    g.strokeStyle = faint; g.lineWidth = 1;
-    g.beginPath(); g.moveTo(10, cy); g.lineTo(w - 10, cy); g.moveTo(cx, 10); g.lineTo(cx, h - 10); g.stroke();
-    g.setLineDash([3, 4]); for (const k of [2]){ g.beginPath(); g.arc(cx, cy, sc * k, 0, 7); g.stroke(); } g.setLineDash([]);
-    g.fillStyle = 'rgba(59,232,255,.08)'; g.strokeStyle = acc; g.lineWidth = 1.5; g.beginPath(); g.arc(cx, cy, sc, 0, 7); g.fill(); g.stroke();
-    g.fillStyle = dim; g.textAlign = 'right'; g.fillText('OVER →', w - 10, cy - 6); g.textAlign = 'left'; g.fillText('← UNDER', 10, cy - 6);
-    g.textAlign = 'left'; g.fillText('flick direction →', 10, h - 10);
+    // where each flick landed: x = along the flick (over / under), y = off to the side; the ring is the target
+    const F = R.flicks, cx = Math.round(w / 2), cy = Math.round(h / 2), sc = Math.min(w, h) / 6.4;
+    g.fillStyle = PAL.n1; g.fillRect(8, cy, w - 16, 2); g.fillRect(cx, 8, 2, h - 16);
+    g.fillStyle = PAL.gold; const ring = new Set(); for (let a = 0; a < 6.283; a += 0.02){ const x = Math.round((cx + Math.cos(a) * sc) / 2) * 2, y = Math.round((cy + Math.sin(a) * sc) / 2) * 2, k = x + ',' + y; if (!ring.has(k)){ ring.add(k); g.fillRect(x, y, 2, 2); } }
+    g.fillStyle = PAL.steel; g.textAlign = 'left'; g.fillText('Under', 8, cy - 6); g.textAlign = 'right'; g.fillText('Over', w - 8, cy - 6);
     for (const f of F){
       const x = cx + Math.max(-3, Math.min(3, f.a)) * sc, y = cy - Math.max(-3, Math.min(3, f.p)) * sc;
       const hit = Math.hypot(f.a, f.p) <= 1;
-      g.fillStyle = hit ? 'rgba(230,240,250,.55)' : (f.a > 0 ? gold : bad);
-      g.beginPath(); g.arc(x, y, hit ? 2 : 2.6, 0, 7); g.fill();
+      sq(x, y, hit ? 3 : 5, hit ? PAL.cream : (f.a > 0 ? PAL.gold : PAL.red));
     }
-    const misses = F.filter(f => Math.hypot(f.a, f.p) > 1), over = misses.filter(f => f.a > 0).length, under = misses.length - over;
+    const misses = F.filter(f => Math.hypot(f.a, f.p) > 1), over = misses.filter(f => f.a > 0).length;
     if (misses.length >= 4){
       const po = Math.round(100 * over / misses.length);
-      const meanA = avg(F.map(f => f.a));
-      note = `${F.length} shots on flicks. Misses: <b>${po}% over</b>, <b>${100 - po}% under</b>. `;
-      if (po >= 65) note += `You're mostly overshooting. Try about ${Math.min(10, Math.round(Math.abs(meanA) * 6 + 3))}% lower sens, or slow the end of the flick.`;
-      else if (po <= 35) note += `You're mostly undershooting. Commit to the flick, or try a touch higher sens.`;
-      else note += `Over and under are balanced, so your sens is fine. The misses are about consistency.`;
-    } else note = F.length ? `Barely any misses on ${F.length} flicks, nothing to correct.` : 'Not enough flicks recorded.';
+      if (po >= 65) note = `<b>${po}%</b> of misses overshot. Try about ${Math.min(10, Math.round(Math.abs(avg(F.map(f => f.a))) * 6 + 3))}% lower sens.`;
+      else if (po <= 35) note = `<b>${100 - po}%</b> of misses fell short. Commit to the flick.`;
+      else note = `Misses split over and under. Your sens is fine.`;
+    } else note = F.length ? `Almost no misses.` : '';
   } else if (m === 'track'){
-    $('#anTitle').textContent = 'ON TARGET OVER TIME';
-    const B = R.buckets, bw = (w - 30) / B.length;
-    g.strokeStyle = faint; for (const p of [0.25, 0.5, 0.75, 1]){ const y = h - 18 - p * (h - 34); g.beginPath(); g.moveTo(24, y); g.lineTo(w - 6, y); g.stroke(); g.fillText(Math.round(p * 100), 2, y + 3); }
-    B.forEach((b, i) => { const p = b.fire ? b.on / b.fire : 0, bh = p * (h - 34); g.fillStyle = acc; g.globalAlpha = 0.35 + 0.65 * p; g.fillRect(26 + i * bw + 2, h - 18 - bh, bw - 4, bh); g.globalAlpha = 1; });
-    g.fillText('0s', 26, h - 5); g.textAlign = 'right'; g.fillText('60s', w - 6, h - 5);
-    const first = B.slice(0, 6), last = B.slice(6), pr = a => { const f = a.reduce((s, b) => s + b.fire, 0); return f ? a.reduce((s, b) => s + b.on, 0) / f : 0; };
-    const d = (pr(last) - pr(first)) * 100;
-    note = R.firing < 1 ? 'Hold left click to fire on the bot.' : `${d >= 0 ? 'Up' : 'Down'} <b>${Math.abs(d).toFixed(1)} pts</b> in the second half. ${R.onTarget / R.firing < 0.5 ? 'Watch the bot, not the crosshair, and match its speed before you correct.' : 'Solid. Hard part is the direction changes, so react to them, don\'t predict.'}`;
+    const B = R.buckets, bw = (w - 36) / B.length;
+    g.fillStyle = PAL.n1; for (const p of [0.5, 1]){ const y = Math.round(h - 18 - p * (h - 30)); g.fillRect(28, y, w - 34, 2); }
+    g.fillStyle = PAL.steel; g.textAlign = 'right'; g.font = numFont; g.fillText('100', 24, Math.round(h - 18 - (h - 30)) + 4); g.fillText('50', 24, Math.round(h - 18 - 0.5 * (h - 30)) + 4);
+    B.forEach((b, i) => { const p = b.fire ? b.on / b.fire : 0, bh = Math.round(p * (h - 30)); g.fillStyle = PAL.gold; g.fillRect(Math.round(30 + i * bw + 2), h - 18 - bh, Math.max(2, Math.round(bw - 4)), bh); });
+    g.fillStyle = PAL.steel; g.textAlign = 'left'; g.fillText('0s', 30, h - 4); g.textAlign = 'right'; g.fillText('60s', w - 6, h - 4);
+    note = R.firing < 1 ? 'Hold click to fire on the bot.' : (R.onTarget / R.firing < 0.5 ? 'Watch the bot, not the crosshair.' : 'Solid. React to direction changes, do not guess them.');
   } else {
-    $('#anTitle').textContent = 'REACTION TIMES';
-    const rs = R.reactions; const max = 800, min = 150;
-    g.strokeStyle = faint; for (const v of [200, 300, 400, 500, 600, 700]){ const y = h - 14 - (v - min) / (max - min) * (h - 28); g.beginPath(); g.moveTo(30, y); g.lineTo(w - 6, y); g.stroke(); g.fillText(v, 2, y + 3); }
-    const step = (w - 40) / Math.max(1, rs.length - 1);
-    g.strokeStyle = acc; g.lineWidth = 1.5; g.beginPath();
-    rs.forEach((v, i) => { const x = 34 + i * step, y = h - 14 - (Math.min(max, Math.max(min, v)) - min) / (max - min) * (h - 28); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke();
-    g.fillStyle = acc; rs.forEach((v, i) => { const x = 34 + i * step, y = h - 14 - (Math.min(max, Math.max(min, v)) - min) / (max - min) * (h - 28); g.beginPath(); g.arc(x, y, 2, 0, 7); g.fill(); });
-    note = rs.length ? `Median <b>${fmt(median(rs))}ms</b> over ${rs.length} hits, ${R.expired} expired. Reaction here includes the flick, so it reads slower than a pure click test.` : 'No hits recorded.';
+    const rs = R.reactions, max = 800, min = 150, Y = v => Math.round(h - 14 - (Math.min(max, Math.max(min, v)) - min) / (max - min) * (h - 28));
+    g.fillStyle = PAL.n1; for (const v of [300, 500, 700]) g.fillRect(34, Y(v), w - 40, 2);
+    g.fillStyle = PAL.steel; g.textAlign = 'right'; g.font = numFont; for (const v of [300, 500, 700]) g.fillText(v, 30, Y(v) + 4);
+    const step = (w - 44) / Math.max(1, rs.length - 1);
+    rs.forEach((v, i) => sq(38 + i * step, Y(v), 4, PAL.gold));
+    note = rs.length ? `Median <b>${fmt(median(rs))} ms</b>, aim included.` : '';
   }
   $('#resNote').innerHTML = note;
-}
-function drawSpark(){
-  const c = $('#resSpark'), [g, w, h] = prepCanvas(c), a = HIST[R.mode] || [];
-  if (a.length < 2){ g.fillStyle = '#56616e'; g.font = '11px "JetBrains Mono", monospace'; g.fillText('play more rounds to see a trend', 10, h / 2 + 4); return; }
-  const mx = Math.max(...a), mn = Math.min(...a), rng = Math.max(1, mx - mn), step = (w - 20) / (a.length - 1);
-  const pt = i => [10 + i * step, h - 8 - (a[i] - mn) / rng * (h - 16)];
-  g.strokeStyle = 'rgba(140,170,200,.4)'; g.lineWidth = 1.5; g.beginPath(); a.forEach((v, i) => { const [x, y] = pt(i); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke();
-  const [lx, ly] = pt(a.length - 1); g.fillStyle = S.target; g.beginPath(); g.arc(lx, ly, 3.5, 0, 7); g.fill();
-  const bi = a.indexOf(mx), [bx, by] = pt(bi); g.fillStyle = '#ffb612'; g.beginPath(); g.arc(bx, by, 2.5, 0, 7); g.fill();
 }
 
 /* =====================================================================
    IDLE MENU SCENE
    ===================================================================== */
-function idleTargets(){
-  clearTargets(); board.visible = true;
-  [1, 3, 8].forEach(c => spawnGrid(c));
-}
+function idleTargets(){ clearTargets(); board.visible = true; [1, 3, 8].forEach(c => spawnGrid(c)); }
 
 /* =====================================================================
-   LOOP / RESIZE
+   LOOP / RESIZE. Renders only while something moves; stops when the frame is hidden or scrolled away.
    ===================================================================== */
+let rafId = 0, last = -1, dirty = 2, onScreen = true;
+function markDirty(){ dirty = Math.max(dirty, 2); kick(); }
+// starting from idle: the first frame gets dt = 0; a running loop keeps its own timestamps
+function kick(){ if (!rafId && onScreen && !document.hidden){ rafId = requestAnimationFrame(frame); } }
 function resize(){
   const w = app.clientWidth, h = app.clientHeight;
-  const pr = S.scale === 'auto' ? Math.min(devicePixelRatio || 1, 2) : parseFloat(S.scale) * (S.scale === '1' ? 1 : Math.min(devicePixelRatio || 1, 2));
-  renderer.setPixelRatio(pr); renderer.setSize(w, h, false);
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); renderer.setSize(w, h, false);
   camera.aspect = w / Math.max(1, h); applyFov();
   const d = devicePixelRatio || 1; xhCanvas.width = Math.round(w * d); xhCanvas.height = Math.round(h * d); xhDirty = true;
-  if (!$('[data-panel=video]').classList.contains('hidden')) syncVideo();
+  if (!UI.settings.classList.contains('hidden')){ syncVideo(); renderXPrev(); }
+  if (state === 'results'){ fitResults(); drawAnalysis(); }
+  syncFs(); markDirty();
 }
 new ResizeObserver(resize).observe(app);
+new IntersectionObserver(es => { onScreen = es[es.length - 1].isIntersecting; kick(); }).observe(app);
+document.addEventListener('visibilitychange', () => { if (document.hidden && (state === 'play' || state === 'countdown')) pause(); kick(); });
 
-let last = performance.now(), fpsN = 0, fpsT = 0, idleT = 0;
 function frame(t){
-  requestAnimationFrame(frame);
-  const dt = Math.min(0.05, (t - last) / 1000); last = t;
-  now = R ? R.t : 0;
-  if (state === 'menu' || state === 'results' || state === 'arming'){
-    idleT += dt;
-    if (state === 'menu'){
-      yaw = Math.sin(idleT * 0.12) * 0.22; pitch = 0.06 + Math.sin(idleT * 0.09) * 0.04; applyCam();
-      for (const p of targets){ p.mesh.scale.setScalar(p.r * (1 + Math.sin(idleT * 2 + p.cell) * 0.04)); }
-    }
-  }
+  rafId = 0;
+  const raw = last < 0 ? 0 : Math.max(0, (t - last) / 1000); last = t;
+  const dt = Math.min(0.25, raw);
+  // only play and the countdown run every frame; title, settings, pause and results render on change and then stop
+  const live = state === 'play' || state === 'countdown';
   updateRound(dt);
-  updateParts(dt); updateRings(dt);
+  updateParts(Math.min(dt, 0.05));
   if (hitFlash > 0){ hitFlash = Math.max(0, hitFlash - dt * 7); xhDirty = true; }
   if (xhDirty){ renderXH(); xhDirty = hitFlash > 0; }
   renderer.render(scene, camera);
-  if (S.showFps){ fpsN++; fpsT += dt; if (fpsT >= 0.5){ $('#hFps').textContent = Math.round(fpsN / fpsT) + ' fps'; fpsN = 0; fpsT = 0; } }
+  if (dirty > 0) dirty--;
+  if (live || dirty > 0 || partsAlive || hitFlash > 0) kick();
+  if (!rafId) last = -1;
 }
 
 /* =====================================================================
    KEYS / WIRING
    ===================================================================== */
-const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
-let keyBuf = [];
-function secret(k){
-  keyBuf.push(k); if (keyBuf.length > 10) keyBuf.shift();
-  if (KONAMI.every((x, i) => keyBuf[keyBuf.length - 10 + i] === x)){
-    for (const mt of accentMats) mt.color.set(0xffb612);
-    setTargetColor('#ffb612'); S.xh.color = '#ffffff'; syncXH(); Sfx.fill(); keyBuf = [];
-  }
-  if (keyBuf.slice(-3).join('') === '117'){ setTargetColor('#8fd14f'); Sfx.beep(true); keyBuf = []; }
-}
+const SCROLL_KEYS = new Set([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End']);
 document.addEventListener('keydown', e => {
-  const typing = /INPUT|SELECT|TEXTAREA/.test(document.activeElement && document.activeElement.tagName) && document.activeElement.type !== 'range' && document.activeElement.type !== 'checkbox';
-  if (typing) return;
-  const k = e.key;
-  if (state === 'menu') secret(k.length === 1 ? k.toLowerCase() : k);
-  if (k === 'f' || k === 'F'){ toggleFs(); e.preventDefault(); return; }
-  if (k === 'm' || k === 'M'){ toggleSound(); return; }
-  if (k === 'r' || k === 'R'){
-    if (state === 'play' || state === 'countdown' || state === 'paused' || state === 'results'){ e.preventDefault(); restart(); }
+  const a = document.activeElement, tag = a && a.tagName;
+  const field = tag === 'INPUT' && a.type !== 'checkbox' && a.type !== 'range' || tag === 'SELECT' || tag === 'TEXTAREA';
+  const control = tag === 'BUTTON' || (tag === 'INPUT' && !field);
+  // keep the house page from scrolling under the game, but let fields and focused buttons do their thing
+  if (SCROLL_KEYS.has(e.key) && !field && !(control && (e.key === ' ' || (a.type === 'range' && e.key.startsWith('Arrow'))))) e.preventDefault();
+  if (field || e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (k === 'f'){ e.preventDefault(); toggleFs(); return; }
+  if (k === 'm'){ toggleSound(); return; }
+  if (k === 'r'){ if (state === 'play' || state === 'countdown' || state === 'paused' || state === 'results'){ e.preventDefault(); restart(); } return; }
+  if (e.key === 'Escape'){
+    if (testMode && (state === 'play' || state === 'countdown')) pause();
+    else if (!UI.settings.classList.contains('hidden')) closeSettings();
     return;
   }
-  if (k === 'Escape' && testMode && (state === 'play' || state === 'countdown')) pause();
-  if ((k === 'Enter' || k === ' ') && state === 'menu'){ e.preventDefault(); startRound(modeId); }
-  if (k === 'Enter' && state === 'results'){ restart(); }
+  if ((e.key === 'Enter' || e.key === ' ') && !control){
+    if (state === 'menu' && UI.settings.classList.contains('hidden')){ e.preventDefault(); startRound(modeId); }
+    else if (state === 'results'){ e.preventDefault(); restart(); }
+  }
 });
-function restart(){
-  const wasLocked = locked;
-  R = null; clearTargets(); hideBot();
-  if (wasLocked || testMode) startRound(modeId);
-  else { startRound(modeId); }
-}
+// the house asks the game to pause when the CRT scrolls out of view
+window.addEventListener('message', e => {
+  if (e.origin !== location.origin || e.data !== 'nl:pause') return;
+  if (state === 'play' || state === 'countdown'){ if (document.pointerLockElement) document.exitPointerLock(); pause(); }
+});
 window.addEventListener('blur', () => { if (state === 'play' || state === 'countdown'){ if (document.pointerLockElement) document.exitPointerLock(); pause(); } });
-document.addEventListener('visibilitychange', () => { if (document.hidden && (state === 'play' || state === 'countdown')) pause(); });
+document.addEventListener('fullscreenchange', syncFs);
+document.addEventListener('webkitfullscreenchange', syncFs);
 
 $('#btnStart').onclick = () => startRound(modeId);
-$('#btnArm').onclick = async () => { const ok = await lockPointer(); if (!ok) toast('Mouse lock was blocked. Wait a second and click again.'); };
-$('#btnArmBack').onclick = quitToMenu;
+$('#btnSettings').onclick = () => openSettings('title');
+$('#btnDone').onclick = closeSettings;
+$('#btnArm').onclick = async () => { const ok = await lockPointer(); if (!ok) toast('Mouse lock blocked. Click again in a second.'); };
+$('#btnArmBack').onclick = toTitle;
 $('#btnResume').onclick = () => resume();
 $('#btnRestart').onclick = restart;
-$('#btnQuit').onclick = quitToMenu;
+$('#btnQuit').onclick = toTitle;
 $('#btnAgain').onclick = restart;
-$('#btnResMenu').onclick = quitToMenu;
+$('#btnResMenu').onclick = toTitle;
 $('#btnSound').onclick = toggleSound;
 $('#btnFs').onclick = toggleFs;
-$('#btnTouchSens').onclick = () => { show(['menu']); selectTab('sens'); $('#btnStart').classList.add('hidden'); };
-document.addEventListener('fullscreenchange', () => { $('#btnFs').classList.toggle('on', !!document.fullscreenElement); });
+$('#btnTouchSens').onclick = () => openSettings('touch', 'sens');
 
-setupTabs(); setupSens(); setupXH(); setupVideo(); syncSound(); renderModes(); renderSummary();
-idleTargets(); applyCam(); resize();
+setupSettings(); syncSound(); syncFs(); renderTitle();
+idleTargets(); yaw = 0.12; pitch = 0.07; applyCam(); resize();
 const touchOnly = matchMedia('(hover: none) and (pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches;
-if (touchOnly) show(['touch']); else show(['menu']);
-if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { renderXPrev(); });
-requestAnimationFrame(frame);
+show(touchOnly ? ['touch', 'corner'] : ['title', 'corner']);
+if (document.fonts && document.fonts.load) Promise.all([document.fonts.load('56px "Silkscreen"'), document.fonts.load('700 20px "Pixelify Sans"')]).then(floorNumbers, floorNumbers).then(() => { renderXPrev(); if (state === 'results') drawAnalysis(); });
+else floorNumbers();
+kick();
 
-/* test hooks (used for automated play-testing) */
+/* test hooks (automated play-testing) */
 window.__aim = {
   start(mode){ testMode = true; startRound(mode || modeId); },
   look(dx, dy){ onLook(dx, dy); },
-  fire(){ if (state === 'play'){ firing = true; shoot(); } },
+  fire(){ if (state === 'play'){ firing = true; if (R.mode !== 'track') shoot(); } },
   release(){ firing = false; },
   aimAtTarget(i = 0, jitter = 0){ const t = targets[i]; if (!t) return false; const v = t.mesh.position.clone().sub(camera.position); yaw = yawOf(v) + (Math.random() - 0.5) * jitter; pitch = pitchOf(v) + (Math.random() - 0.5) * jitter; applyCam(); return true; },
   aimAtBot(part = 'head'){ if (!bot.alive) return false; const v = new THREE.Vector3(bot.x, bot.y + (part === 'head' ? bot.headY : 1.0), bot.z).sub(camera.position); yaw = yawOf(v); pitch = pitchOf(v); applyCam(); return true; },
   skip(sec){ if (R) R.t += sec; },
-  get state(){ return state; }, get round(){ return R; }, cm360, degPerCount,
+  get state(){ return state; }, get round(){ return R; }, get yaw(){ return yaw; }, get pitch(){ return pitch; }, get rawInput(){ return rawInput; },
+  get rendering(){ return !!rafId; },
+  S, GAMES, convert, cm360, degPerCount,
 };
 </script>
 </body>

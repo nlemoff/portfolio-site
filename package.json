@@ -9,6 +9,7 @@
     "art": "python3 art/build.py && python3 art/page.py"
   },
   "dependencies": {
+    "@fontsource/pixelify-sans": "^5.3.0",
     "astro": "^5.18.2"
   }
 }

@@ -477,7 +477,7 @@ def compose_top(L, mode):
         slab(c, 18, 264, 144, 6)
         c.rect(158, 256, W - 158, 3, 's2'); c.rect(158, 256, W - 158, 1, 's3')
         earth(c, 158, 259, W - 158, 11, 3)
-        mailbox(c, 159, 232)
+        mailbox(c, 156, 232)
         c.rect(0, 256, 14, 14, 'e1' if mode == 'night' else 'v')
         z.o('planet', 134, 150, 40, 40)
         z.o('raven', 116, 198, 16, 13)
@@ -952,7 +952,7 @@ def room_D(mode):
             c.px(r.randint(1, 34), r.randint(2, H - 2), 'p3')
     earth(c, 324, 0, W - 324, H, 31)
     oak_trunk(c, 6, 40, H, mode)
-    oak_canopy(c, 16, 26, 16, 16, mode, 3)
+    oak_canopy(c, 22, 26, 8, 14, mode, 3)
     c.line(12, 120, 30, 104, 'w1' if mode == 'day' else 'w0'); c.line(12, 121, 30, 105, 'k0')
     wall_cut(c, 36, 0, 6, H)
     wall_cut(c, 318, 0, 6, H)
@@ -1338,7 +1338,7 @@ def garage_D(mode):
     for k in ['crash', 'ride', 'hihat', 'tom1', 'tom2', 'kick', 'snare', 'floortom']:
         cv, px_, py_ = kit[k]
         z.o('kit-' + k, kx + px_, ky + py_, cv.w, cv.h)
-    z.o('orb5', kx + 40, ky + 30, 9, 9)
+    z.o('orb5', 188, 174, 9, 9)   # on the cooler, clear of the kick
     # shelf above the door: taped box, ship in a bottle, the little tv, paint cans
     sy = 40
     c.rect(202, sy, 112, 3, 'w3'); c.rect(202, sy, 112, 1, 'w4'); c.frame(201, sy - 1, 114, 5, 'k0')
@@ -1371,9 +1371,9 @@ def garage_D(mode):
     # clutter: extension cord on a nail, cooler, sneakers, broom
     c.px(146, 104, 's2')
     for k in range(3):
-        c.ellipse(146, 113 + k, 6 - k, 7 - k, 'o2')
+        c.ellipse(146, 113 + k, 6 - k, 7 - k, 'n3')
     c.disc(146, 114, 3, 's2'); c.disc(146, 114, 2, 's2')
-    c.line(150, 120, 152, 134, 'o2'); c.line(152, 134, 149, 140, 'o1')
+    c.line(150, 120, 152, 134, 'n3'); c.line(152, 134, 149, 140, 'n2')
     c.rect(184, 184, 20, 12, 'n4'); c.rect(184, 184, 20, 4, 'c0'); c.frame(183, 183, 22, 14, 'k0'); c.rect(189, 181, 10, 2, 's2'); c.rect(185, 191, 18, 1, 'n3')
     c.line(201, 150, 199, 182, 'w4'); c.poly([(195, 180), (203, 180), (204, 184), (194, 184)], 'g2')
     # light: moon through the high window, light under the door, the tv's glow
@@ -1769,7 +1769,7 @@ def garage_M(mode):
     for k in ['crash', 'ride', 'hihat', 'tom1', 'tom2', 'kick', 'snare', 'floortom']:
         cv, px_, py_ = kit[k]
         z.o('kit-' + k, kx + px_, ky + py_, cv.w, cv.h)
-    z.o('orb5', kx + 40, ky + 30, 9, 9)
+    z.o('orb5', 124, floor - 10, 9, 9)
     z.o('pumpkin', 150, floor - 10, 10, 10)
     if mode == 'night':
         z.light.shaft([(128, 14), (158, 14), (120, 106), (90, 106)], 1.2, soft=4)

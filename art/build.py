@@ -4,7 +4,7 @@ python3 art/build.py [outdir]
 import json, os, sys
 import numpy as np
 from px import Canvas, Light
-import scene, overlays as O
+import scene, overlays as O, margins
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), '..', 'public', 'house')
 os.makedirs(OUT, exist_ok=True)
@@ -24,12 +24,12 @@ for zn in ZONES:
             if mode == 'night':
                 g = z.c.render(light=lf, gold=True)
                 g.save(f'{OUT}/R5-House-{zn}-{L}-gold.png', optimize=True)
-                g.crop((0, 0, 1, z.h)).save(f'{OUT}/R5-House-{zn}-{L}-gold-eL.png', optimize=True)
-                g.crop((z.w - 1, 0, z.w, z.h)).save(f'{OUT}/R5-House-{zn}-{L}-gold-eR.png', optimize=True)
-            # 1px edge columns for the page margins
+                margins.tile(g, 'L').save(f'{OUT}/R5-House-{zn}-{L}-gold-eL.png', optimize=True)
+                margins.tile(g, 'R').save(f'{OUT}/R5-House-{zn}-{L}-gold-eR.png', optimize=True)
+            # repeating tiles for the page margins beyond the scene
             im = z.c.render(light=lf)
-            im.crop((0, 0, 1, z.h)).save(f'{OUT}/R5-House-{zn}-{L}-{mode}-eL.png', optimize=True)
-            im.crop((z.w - 1, 0, z.w, z.h)).save(f'{OUT}/R5-House-{zn}-{L}-{mode}-eR.png', optimize=True)
+            margins.tile(im, 'L').save(f'{OUT}/R5-House-{zn}-{L}-{mode}-eL.png', optimize=True)
+            margins.tile(im, 'R').save(f'{OUT}/R5-House-{zn}-{L}-{mode}-eR.png', optimize=True)
             if L == 'D':
                 lightref[(zn, mode)] = z.light
                 for o in z.ov:

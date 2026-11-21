@@ -107,8 +107,7 @@ def build(dc=False):
                      extra=f'--fd:{260 + i * 70}ms;--dl:{-i * 0.7:.1f}s', attrs='aria-hidden="true"'))
     hero = el('div', 'top', 'hero', 'tb hero', kind='tx', inner=(
         '<h1>Nick Lemoff</h1>'
-        '<p class="lede">Member of Technical Staff at Judgment Labs. I work on agent evals.</p>'
-        '<p>Before that, FullProof. Berkeley before that. Oakland now.</p>'))
+        '<p class="lede">I work on agent evals at Judgment Labs.</p>'))
     planet_inner = (S('orb1', 'orb', attrs='data-orb="1" role="button" tabindex="0" aria-label="Orb"', extra='left:calc(24*var(--px));top:calc(2*var(--px))')
                     if not dc else S('orb1', 'orb', extra='left:calc(24*var(--px));top:calc(2*var(--px))'))
     top = f'''
@@ -125,7 +124,7 @@ def build(dc=False):
 </section>'''
 
     # ------------------------------------------------ ROOM
-    work = ''.join(f'<li><b>{work_split(w)[0]}</b>, {work_split(w)[1]}</li>' for w in WORK)
+    work = ''.join('<li><b>{0}</b>, {1}, <span class="nw">{2}</span></li>'.format(work_split(w)[0], *work_split(w)[1].rsplit(', ', 1)) for w in WORK)
     papers = {
         'w1': f'<a href="{XPOST}" {ext}>Aligning agent evals with your own judgment</a> <span class="meta">(X, 2026)</span>',
         'w2': 'Finding undocumented oil and gas wells on historical maps <span class="meta">(AGU, 2024)</span>',
@@ -153,7 +152,7 @@ def build(dc=False):
   {paper_html}
   {projects}
   <div class="p scan dn-m" style="--x:211;--y:177;--w:88;--h:61;--mx:0;--my:0" aria-hidden="true"></div>
-  {el('button', 'room', 'door', 'door', key='door', attrs='aria-label="117" type="button"' if not dc else 'aria-label="117" type="button"')}
+  {el('span', 'room', 'door', 'doorway', inner=S('door', 'door').replace('<span ', '<button type="button" aria-label="Door" ', 1).replace('</span>', '</button>'))}
   {el('span', 'room', 'orb3', 'orb', key='orb3', attrs='data-orb="3" role="button" tabindex="0" aria-label="Orb"')}
   {el('span', 'room', 'orb2', 'orb', key='orb2', attrs='data-orb="2" role="button" tabindex="0" aria-label="Orb"')}
   {el('span', 'room', 'corgi', 'corgi anim', key='corgi', extra='--fd:900ms', attrs='aria-hidden="true"')}
@@ -167,9 +166,10 @@ def build(dc=False):
 </section>'''
 
     # ------------------------------------------------ GARAGE
+    DRUM_NAMES = {'crash': 'Crash cymbal', 'ride': 'Ride cymbal', 'hihat': 'Hi-hat', 'tom1': 'High tom', 'tom2': 'Mid tom', 'kick': 'Kick drum', 'snare': 'Snare drum', 'floortom': 'Floor tom'}
     kitmap = [('crash', 'Q'), ('ride', 'E'), ('hihat', 'A'), ('tom1', 'D'), ('tom2', 'F'), ('kick', 'B'), ('snare', 'S'), ('floortom', 'G')]
-    kit = ''.join(el('button', 'garage', 'kit-' + k, 'drum', key='kit-' + k, attrs=f'type="button" data-drum="{k}" data-key="{key}" aria-label="{k}" tabindex="-1"') for k, key in kitmap)
-    brackets = ''.join(el('button', 'garage', 'bracket%d' % i, 'bracket', key='bracket', attrs='type="button" aria-label="Bracket"') for i in range(3))
+    kit = ''.join(el('button', 'garage', 'kit-' + k, 'drum', key='kit-' + k, attrs=f'type="button" data-drum="{k}" data-key="{key}" aria-label="{DRUM_NAMES[k]}" tabindex="-1"') for k, key in kitmap)
+    brackets = ''.join(el('button', 'garage', 'bracket%d' % i, 'bracket', key='bracket', attrs='type="button" aria-label="Shelf bracket"') for i in range(3))
     stickers = ''.join(el('a', 'garage', sid, 'tb sticker s-' + sid, kind='tx', attrs=f'href="{href}" {ext}', inner=label, extra=f'--rot:{rot}deg')
                        for sid, label, href, rot in (('lk-x', 'X', LINKS['X'], -7), ('lk-li', 'LinkedIn', LINKS['LinkedIn'], 4), ('lk-gh', 'GitHub', LINKS['GitHub'], -3)))
     garage = f'''
@@ -202,7 +202,7 @@ def build(dc=False):
             '<button class="gtab" type="button" data-game="aim" aria-pressed="false">Aim Trainer</button>'
             '<button class="gtab" type="button" data-game="shooter" aria-pressed="false">Ringfall</button>'
             '<button class="gfs" type="button" id="gfs">Full screen</button></div>'
-            '<div class="gstage"><iframe id="gframe" src="/games/racing/index.html" title="Time Trial" allow="fullscreen; autoplay" loading="lazy"></iframe></div>'))
+            '<div class="gstage"><iframe id="gframe" data-src="/games/racing/index.html" title="Time Trial" allow="fullscreen; autoplay"></iframe></div>'))
     scores = el('div', 'base', 'scores', 'tb scores', kind='tx', inner=(
         '<table><tbody>'
         '<tr><th scope="row">Time Trial</th><td id="sc-racing">-:--.---</td></tr>'
@@ -244,7 +244,8 @@ CSS = r'''
 html.gold{--atlas:url(/house/R5-House-atlas-gold.png); --ink-hero:var(--g3); --hero-sub:var(--c1); --page:#0d0b1a}
 *,*::before,*::after{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--k0);color:var(--c1);font-family:"Pixelify Sans",system-ui,sans-serif;font-size:var(--fs);line-height:1.35;overflow-x:hidden}
+body{margin:0;background:var(--k0);color:var(--c1);font-family:"Pixelify Sans",system-ui,sans-serif;font-size:var(--fs);line-height:1.35;overflow-x:hidden;font-variant-ligatures:none}
+.nw{white-space:nowrap}
 h1,h2,p,ul,table{margin:0;padding:0}
 h2{font-weight:600;font-size:inherit}
 ul{list-style:none}
@@ -256,7 +257,8 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cu
 
 /* ------------ zones: pixel stage centred, edges extended with the art's own edge column */
 .zone{position:relative;display:flex;justify-content:center;overflow:hidden}
-.zone::before,.zone::after{content:"";position:absolute;top:0;bottom:0;width:50%;background-size:var(--px) 100%;background-repeat:repeat-x;image-rendering:pixelated}
+.zone::before,.zone::after{content:"";position:absolute;top:0;bottom:0;width:50%;background-size:calc(var(--px)*64) 100%;background-repeat:repeat-x;image-rendering:pixelated}
+.zone::before{background-position:right top}
 .zone::before{left:0;background-image:var(--dl1)}
 .zone::after{right:0;background-image:var(--dr1)}
 .stage{position:relative;z-index:1;flex:none;width:calc(var(--WD)*var(--px));height:calc(var(--HD)*var(--px));background:var(--d1) 0 0/100% 100% no-repeat;image-rendering:pixelated}
@@ -286,7 +288,7 @@ html.gold .zone::before{background-image:var(--dl3)} html.gold .zone::after{back
 /* ------------ map (work) */
 .maptext{color:var(--mapink);font-size:calc(var(--fs)*1.12);line-height:1.2}
 .maptext li{line-height:1.52 !important}
-@media (max-width:1407px){.maptext li{line-height:1.15 !important}}
+@media (max-width:1424px){.maptext li{line-height:1.15 !important}}
 .banner{display:flex;align-items:center;justify-content:center;color:#4e1420;font-weight:700;font-size:calc(var(--fs)*1.1);line-height:1;margin:0}
 .maptext li{padding-left:calc(var(--px)*3);position:relative;line-height:1.3}
 .maptext li::before{content:"";position:absolute;left:0;top:.45em;width:calc(var(--px)*1.5);height:calc(var(--px)*1.5);background:var(--r2)}
@@ -302,6 +304,7 @@ html.gold .zone::before{background-image:var(--dl3)} html.gold .zone::after{back
 .ports{position:relative;display:flex;gap:calc(var(--px)*3);margin-bottom:calc(var(--px)*2)}
 .ports .spr.port{position:relative;flex:none;outline:calc(var(--px)*.75) solid var(--k0);cursor:pointer}
 .ports .spr.port.on{outline-color:var(--g3)}
+.ports .spr.port:focus-visible{outline:calc(var(--px)*1) solid var(--g4);outline-offset:calc(var(--px)*.5)}
 .p1tok{left:0;top:calc(var(--px)*9);margin-left:calc(var(--px)*10);transition:left .18s steps(4)}
 .plist li{padding:calc(var(--px)*.5) 0;color:var(--n6)}
 .plist li.on{color:var(--c0)}
@@ -321,6 +324,7 @@ html.gold .zone::before{background-image:var(--dl3)} html.gold .zone::after{back
 .box.shake{animation:shake .32s steps(4)}
 @keyframes shake{25%{transform:translateX(var(--px))}50%{transform:translateX(calc(var(--px)*-1))}75%{transform:translateX(var(--px))}}
 .box.nudged{transform:translateX(calc(var(--px)*5))}
+.orb.out{z-index:6;transform:translate(calc(var(--px)*-3),calc(var(--px)*-12));transition:transform .3s steps(4)}
 .bracket.bump{animation:bump .2s steps(2)}
 @keyframes bump{50%{transform:translateY(calc(var(--px)*-2))}}
 .coin{pointer-events:none;animation:coin .6s steps(6) forwards}
@@ -328,7 +332,7 @@ html.gold .zone::before{background-image:var(--dl3)} html.gold .zone::after{back
 @keyframes coin{0%{transform:translateY(0)}60%{transform:translateY(calc(var(--px)*-14))}100%{transform:translateY(calc(var(--px)*-12));opacity:0}}
 .tvsun,.pumpkin,.dragon,.smoke.eve,.steam.morn{display:none}
 html.gameday .tvsun{display:block}
-html.gameday .towel{--fd:110ms}
+html.gameday .towel{--fd:110ms !important}
 html.halloween .pumpkin{display:block}
 html.evening .smoke.eve{display:block}
 html.morning .steam.morn{display:block}
@@ -338,9 +342,12 @@ html.gold .dragon{display:block;animation:uncoil 2.4s steps(24) both}
 @media (prefers-color-scheme:dark){.night-only{display:block}}
 html.gold .night-only{display:block}
 
+@media (pointer:coarse){.orb::before,.hearth::before,.fuzz::before,.bracket::before{content:"";position:absolute;inset:-10px}}
+
 /* ------------ room interactions */
-.door{transition:transform .5s steps(8)}
-.door.open{transform:translateX(calc(var(--px)*-30))}
+.doorway{overflow:hidden}
+.doorway .door{position:absolute;left:0;top:0;transition:transform .5s steps(8)}
+.door.open{transform:translateX(-100%)}
 .hilt.hum{animation:hum .09s steps(2) infinite}
 @keyframes hum{50%{transform:translate(calc(var(--px)*.5),calc(var(--px)*-.5))}}
 .hearth.swirl{animation:swirl .7s steps(7)}
@@ -393,14 +400,16 @@ html.gold .night-only{display:block}
 @keyframes fall{to{transform:translateY(110vh)}}
 
 /* ------------ scale tiers: one integer pixel scale per tier */
-@media (max-width:1407px){:root{--px:3px;--fs:15px}}
-@media (min-width:1056px) and (max-width:1407px){
+@media (max-width:1424px){:root{--px:3px;--fs:15px}}
+@media (min-width:1073px) and (max-width:1424px){
   /* 3x art, text kept at 15px: the longest note takes the board's width, the map list gets a little more parchment */
   .p.t3{left:calc(var(--x3)*var(--px));top:calc(var(--y3)*var(--px));width:calc(var(--w3)*var(--px));height:calc(var(--h3)*var(--px))}
   .paper.t3{background:var(--paperbg);box-shadow:0 0 0 var(--px) #0d0b1a,var(--px) var(--px) 0 var(--px) #0d0b1a}
   .maptext{font-size:var(--fs)} .maptext li{line-height:1.12}
+  .screen{padding:var(--px) calc(var(--px)*2);line-height:1.12}
+  .screen h2{margin-bottom:var(--px)} .ports{margin-bottom:var(--px)} .plist li{padding:0}
 }
-@media (max-width:1055px){
+@media (max-width:1072px){
   :root{--px:4px;--fs:19px}
   .stage{width:calc(var(--WM)*var(--px));height:calc(var(--HM)*var(--px));background-image:var(--m1)}
   .zone::before{background-image:var(--ml1)} .zone::after{background-image:var(--mr1)}
@@ -412,15 +421,15 @@ html.gold .night-only{display:block}
   .maptext{font-size:var(--fs)} .maptext li{line-height:1.2}
   .paper{font-size:var(--fs)}
 }
-@media (max-width:1055px) and (prefers-color-scheme:dark){
+@media (max-width:1072px) and (prefers-color-scheme:dark){
   .stage{background-image:var(--m2)}
   .zone::before{background-image:var(--ml2)} .zone::after{background-image:var(--mr2)}
 }
-@media (max-width:1055px){html.gold .stage{background-image:var(--m3)} html.gold .zone::before{background-image:var(--ml3)} html.gold .zone::after{background-image:var(--mr3)}}
-@media (max-width:1055px){:root{--px:3px;--fs:17px}}
-@media (max-width:1055px) and (min-width:760px){:root{--px:4px;--fs:19px}}
+@media (max-width:1072px){html.gold .stage{background-image:var(--m3)} html.gold .zone::before{background-image:var(--ml3)} html.gold .zone::after{background-image:var(--mr3)}}
+@media (max-width:1072px){:root{--px:3px;--fs:17px}}
+@media (max-width:1072px) and (min-width:760px){:root{--px:4px;--fs:19px}}
 @media (max-width:559px){:root{--px:2px;--fs:15px}}
-@media (max-width:559px){.gtab,.gfs{font-size:10px;padding:4px 6px}}
+@media (max-width:559px){.gtab,.gfs{font-size:10px;padding:4px 6px} .screen{line-height:1.12} .plist li{padding:0}}
 
 @media (prefers-reduced-motion:reduce){
   .anim,.scan,.hum,.hilt.hum,.dragon{animation:none !important}
@@ -434,7 +443,7 @@ JS = r'''
 var CFG = %CFG%;
 var root = document.documentElement;
 var RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
-var isM = function(){ return matchMedia('(max-width:1055px)').matches; };
+var isM = function(){ return matchMedia('(max-width:1072px)').matches; };
 var pxv = function(){ return parseFloat(getComputedStyle(root).getPropertyValue('--px')) || 4; };
 var $ = function(s, r){ return (r||document).querySelector(s); };
 var $$ = function(s, r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); };
@@ -451,7 +460,7 @@ if ((M === 10 && D >= 15) || (M === 11 && D === 1)) root.classList.add('hallowee
 var season = (M >= 9) || (M === 1) || (M === 2 && D <= 15);
 if (season && DOW === 0) root.classList.add('gameday');
 if (H >= 5 && H < 11) root.classList.add('morning');
-if (H >= 17 || H < 6) root.classList.add('evening');
+if (H >= 17 || H < 5) root.classList.add('evening');
 
 /* ---------------- sound: off by default, one toggle */
 var AC = null, soundOn = false, tone = null;
@@ -494,17 +503,18 @@ hearth.addEventListener('click', function(){
   var ring = document.createElement('span'); ring.className = 'ring';
   ring.style.cssText = 'left:' + (r.left - 20) + 'px;top:' + (r.top - 26) + 'px;width:' + (r.width + 40) + 'px;height:' + (r.height + 40) + 'px';
   document.body.appendChild(ring); hearth.classList.add('swirl'); SFX.swirl();
-  setTimeout(function(){ ring.remove(); hearth.classList.remove('swirl'); window.scrollTo({top:0, behavior: RM ? 'auto' : 'smooth'}); }, RM ? 0 : 650);
+  setTimeout(function(){ ring.remove(); hearth.classList.remove('swirl'); window.scrollTo({top:0, behavior: RM ? 'auto' : 'smooth'}); var h1 = $('h1'); h1.tabIndex = -1; h1.focus({preventScroll:true}); }, RM ? 0 : 650);
 });
 
 /* ---------------- door 117 slides */
 var door = $('.door');
 function doorOpen(o){ if (o === door.classList.contains('open')) return; door.classList.toggle('open', o); if (o) SFX.whoosh(); }
-door.addEventListener('mouseenter', function(){ doorOpen(true); });
+var doorHoverT = 0;
+door.addEventListener('mouseenter', function(){ doorHoverT = performance.now(); doorOpen(true); });
 door.addEventListener('mouseleave', function(){ doorOpen(false); });
 door.addEventListener('focus', function(){ doorOpen(true); });
 door.addEventListener('blur', function(){ doorOpen(false); });
-door.addEventListener('click', function(){ doorOpen(!door.classList.contains('open')); });
+door.addEventListener('click', function(){ if (performance.now() - doorHoverT < 700) return; doorOpen(!door.classList.contains('open')); });
 
 /* ---------------- fuzzballs multiply and spill downstairs */
 var fuzzN = 0;
@@ -525,7 +535,7 @@ $('.fuzz').addEventListener('click', function(){
 var box = $('.box'), boxN = 0;
 box.addEventListener('click', function(){
   boxN++; box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake'); SFX.thud();
-  if (boxN >= 3) box.classList.add('nudged');
+  if (boxN >= 3 && !box.classList.contains('nudged')){ box.classList.add('nudged'); var o6 = $('[data-orb="6"]'); if (o6){ o6.classList.add('out'); o6.tabIndex = 0; } }
 });
 
 /* ---------------- shelf brackets pop coins */
@@ -544,6 +554,7 @@ $$('.bracket').forEach(function(b){
 var hilt = $('.hilt');
 ['mouseenter','focus'].forEach(function(ev){ hilt.addEventListener(ev, function(){ hilt.classList.add('hum'); humOn(); }); });
 ['mouseleave','blur'].forEach(function(ev){ hilt.addEventListener(ev, function(){ hilt.classList.remove('hum'); humOff(); }); });
+hilt.addEventListener('click', function(){ hilt.classList.add('hum'); humOn(); clearTimeout(hilt._t); hilt._t = setTimeout(function(){ hilt.classList.remove('hum'); humOff(); }, 1500); });
 
 /* ---------------- projects: drop the P1 token */
 var ports = $$('.port'), plist = $$('.plist li'), tok = $('.p1tok');
@@ -588,11 +599,11 @@ function tick(ts){
   requestAnimationFrame(tick);
 }
 requestAnimationFrame(tick);
-corgi.parentNode.addEventListener('click', function(e){ if (e.target === corgi && cg.state === 'sleep'){ cg.x = cgL().home; cgSet('sit'); cg.lastNear = performance.now(); } });
+corgi.parentNode.addEventListener('click', function(e){ if (e.target !== corgi) return; if (cg.x === null) cg.x = cgL().home; if (cg.state === 'sleep') cgSet('sit'); cg.lastNear = performance.now(); target = cg.x + (cg.x > cgL().home + 20 ? -40 : 40); });
 
 /* ---------------- drum kit: keyboard-playable only while the kit is focused or hovered */
 var kit = $('.kit'), hits = 0, KEYS = {}, drums = $$('.drum');
-drums.forEach(function(d){ KEYS[d.dataset.key.toLowerCase()] = d; if (d.dataset.key === 'B') KEYS[' '] = d; });
+drums.forEach(function(d){ KEYS[d.dataset.key.toLowerCase()] = d; });
 function play(d){ d.classList.add('hit'); setTimeout(function(){ d.classList.remove('hit'); }, 90); SFX.drum(d.dataset.drum); hits++; if (hits === CFG.orb5at) showOrb(5); }
 drums.forEach(function(d){ d.addEventListener('pointerdown', function(e){ e.preventDefault(); play(d); kit.focus({preventScroll:true}); }); });
 kit.addEventListener('keydown', function(e){ if (e.metaKey || e.ctrlKey || e.altKey) return; var d = KEYS[e.key.toLowerCase()]; if (d){ e.preventDefault(); play(d); } });
@@ -605,9 +616,10 @@ kitZone.addEventListener('mouseleave', function(){ if (document.activeElement ==
 /* ---------------- orbs (7, persisted) */
 var got = ls('r5.orbs') || [];
 function dots(){ $$('.dot').forEach(function(d){ d.classList.toggle('on', got.indexOf(+d.dataset.dot) >= 0); }); }
-function showOrb(n){ var o = $('[data-orb="' + n + '"]'); if (o && got.indexOf(n) < 0) o.classList.remove('hide'); }
+function showOrb(n){ var o = $('[data-orb="' + n + '"]'); if (o && got.indexOf(n) < 0){ o.classList.remove('hide'); o.tabIndex = 0; } }
 function collect(n){ if (got.indexOf(n) >= 0) return; got.push(n); ls('r5.orbs', got); var o = $('[data-orb="' + n + '"]'); if (o) o.classList.add('got'); SFX.orb(); dots(); if (got.length === 7){ root.classList.add('gold'); ls('r5.gold', true); } }
 $$('[data-orb]').forEach(function(o){ var n = +o.dataset.orb; if (got.indexOf(n) >= 0) o.classList.add('got');
+  if (o.classList.contains('hide') || n === 2 || n === 6) o.tabIndex = -1;
   o.addEventListener('click', function(e){ e.stopPropagation(); collect(n); });
   o.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); collect(n); } }); });
 dots();
@@ -618,8 +630,9 @@ var KON = ['arrowup','arrowup','arrowdown','arrowdown','arrowleft','arrowright',
 document.addEventListener('keydown', function(e){
   var tg = e.target; if (tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA' || tg.isContentEditable)) return;
   if (kit.contains(tg) || tg === kit) { ki = 0; return; }
-  ki = (e.key.toLowerCase() === KON[ki]) ? ki + 1 : (e.key.toLowerCase() === KON[0] ? 1 : 0);
-  if (ki === KON.length){ ki = 0; var f = document.createElement('div'); f.className = 'flick'; document.body.appendChild(f); setTimeout(function(){ f.remove(); }, 1200);
+  var k = e.key.toLowerCase();
+  ki = (k === KON[ki]) ? ki + 1 : (k === KON[0] ? (ki === 2 ? 2 : 1) : 0);
+  if (ki === KON.length){ ki = 0; if (!RM){ var f = document.createElement('div'); f.className = 'flick'; document.body.appendChild(f); setTimeout(function(){ f.remove(); }, 1200); }
     var L = cgL(); if (cg.x === null) cg.x = L.home; cgSet('walk'); cg.lastNear = performance.now() + 8000; lapQ = [L.max, L.min, L.home]; }
 });
 
@@ -659,9 +672,17 @@ if (root.classList.contains('winter') && !RM){
 }
 
 /* ---------------- games: tabs, full screen, scores */
-var frame = $('#gframe');
-$$('.gtab').forEach(function(b){ b.addEventListener('click', function(){ $$('.gtab').forEach(function(x){ x.setAttribute('aria-pressed', String(x === b)); }); frame.src = '/games/' + b.dataset.game + '/index.html'; frame.title = b.textContent; }); });
-$('#gfs').addEventListener('click', function(){ if (frame.requestFullscreen) frame.requestFullscreen(); });
+var frame = $('#gframe'), want = frame.dataset.src, loaded = false;
+function load(){ if (!loaded){ loaded = true; frame.src = want; } }
+$$('.gtab').forEach(function(b){ b.addEventListener('click', function(){ $$('.gtab').forEach(function(x){ x.setAttribute('aria-pressed', String(x === b)); }); want = '/games/' + b.dataset.game + '/index.html'; frame.title = b.textContent; loaded = false; load(); }); });
+if ('IntersectionObserver' in window){
+  new IntersectionObserver(function(es){ if (es[0].isIntersecting) load(); }, {rootMargin:'400px 0px'}).observe(frame);
+  new IntersectionObserver(function(es){ if (!es[0].isIntersecting && loaded && frame.contentWindow) frame.contentWindow.postMessage('nl:pause', location.origin); }, {threshold:0}).observe(frame);
+} else load();
+$('#gfs').addEventListener('click', function(){ load();
+  var go = frame.requestFullscreen || frame.webkitRequestFullscreen;
+  if (go) go.call(frame); else window.open(want, '_blank', 'noopener');
+});
 function fmtLap(s){ if (s == null) return '-:--.---'; var m = Math.floor(s/60); return m + ':' + (s - m*60).toFixed(3).padStart(6, '0'); }
 var base0 = null;
 function readScores(){

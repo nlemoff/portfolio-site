@@ -4,7 +4,7 @@
 var CFG = {"corgi": {"D": {"y": 276, "wy": 274, "home": 156, "min": 92, "max": 288}, "M": {"y": 664, "wy": 662, "home": 96, "min": 60, "max": 130}}, "spill": [{"z": "room", "x": 104, "y": 153, "mx": 44, "my": 227}, {"z": "room", "x": 115, "y": 151, "mx": 52, "my": 225}, {"z": "room", "x": 126, "y": 153, "mx": 60, "my": 227}, {"z": "room", "x": 137, "y": 151, "mx": 68, "my": 225}, {"z": "room", "x": 148, "y": 153, "mx": 76, "my": 227}, {"z": "room", "x": 88, "y": 285, "mx": 60, "my": 673}, {"z": "room", "x": 94, "y": 285, "mx": 67, "my": 673}, {"z": "room", "x": 100, "y": 285, "mx": 74, "my": 673}, {"z": "room", "x": 106, "y": 285, "mx": 81, "my": 673}, {"z": "garage", "x": 69, "y": 87, "mx": 112, "my": 193}, {"z": "garage", "x": 74, "y": 103, "mx": 119, "my": 193}, {"z": "garage", "x": 79, "y": 119, "mx": 126, "my": 193}, {"z": "garage", "x": 84, "y": 135, "mx": 133, "my": 193}, {"z": "garage", "x": 89, "y": 151, "mx": 140, "my": 193}, {"z": "garage", "x": 94, "y": 167, "mx": 147, "my": 193}, {"z": "garage", "x": 104, "y": 189, "mx": 150, "my": 193}], "orb4at": 12, "orb5at": 16, "fuzz": "--ax:0;--ay:240;--sw:9;--sh:7;--n:2", "coin": "--ax:311;--ay:240;--sw:6;--sh:8;--n:4", "hit": "--ax:336;--ay:240;--sw:9;--sh:9;--n:1", "sp": {"corgi": "--ax:47;--ay:240;--sw:33;--sh:14;--n:2", "corgisit": "--ax:251;--ay:240;--sw:21;--sh:15;--n:1", "corgiwalk": "--ax:114;--ay:240;--sw:34;--sh:16;--n:4", "diver": "--ax:346;--ay:240;--sw:14;--sh:14;--n:1", "puff": "--ax:0;--ay:263;--sw:20;--sh:12;--n:3"}, "hay": {"x": 14, "y": 186}, "eave": 236};
 var root = document.documentElement;
 var RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
-var isM = function(){ return matchMedia('(max-width:1055px)').matches; };
+var isM = function(){ return matchMedia('(max-width:1072px)').matches; };
 var pxv = function(){ return parseFloat(getComputedStyle(root).getPropertyValue('--px')) || 4; };
 var $ = function(s, r){ return (r||document).querySelector(s); };
 var $$ = function(s, r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); };
@@ -21,7 +21,7 @@ if ((M === 10 && D >= 15) || (M === 11 && D === 1)) root.classList.add('hallowee
 var season = (M >= 9) || (M === 1) || (M === 2 && D <= 15);
 if (season && DOW === 0) root.classList.add('gameday');
 if (H >= 5 && H < 11) root.classList.add('morning');
-if (H >= 17 || H < 6) root.classList.add('evening');
+if (H >= 17 || H < 5) root.classList.add('evening');
 
 /* ---------------- sound: off by default, one toggle */
 var AC = null, soundOn = false, tone = null;
@@ -64,17 +64,18 @@ hearth.addEventListener('click', function(){
   var ring = document.createElement('span'); ring.className = 'ring';
   ring.style.cssText = 'left:' + (r.left - 20) + 'px;top:' + (r.top - 26) + 'px;width:' + (r.width + 40) + 'px;height:' + (r.height + 40) + 'px';
   document.body.appendChild(ring); hearth.classList.add('swirl'); SFX.swirl();
-  setTimeout(function(){ ring.remove(); hearth.classList.remove('swirl'); window.scrollTo({top:0, behavior: RM ? 'auto' : 'smooth'}); }, RM ? 0 : 650);
+  setTimeout(function(){ ring.remove(); hearth.classList.remove('swirl'); window.scrollTo({top:0, behavior: RM ? 'auto' : 'smooth'}); var h1 = $('h1'); h1.tabIndex = -1; h1.focus({preventScroll:true}); }, RM ? 0 : 650);
 });
 
 /* ---------------- door 117 slides */
 var door = $('.door');
 function doorOpen(o){ if (o === door.classList.contains('open')) return; door.classList.toggle('open', o); if (o) SFX.whoosh(); }
-door.addEventListener('mouseenter', function(){ doorOpen(true); });
+var doorHoverT = 0;
+door.addEventListener('mouseenter', function(){ doorHoverT = performance.now(); doorOpen(true); });
 door.addEventListener('mouseleave', function(){ doorOpen(false); });
 door.addEventListener('focus', function(){ doorOpen(true); });
 door.addEventListener('blur', function(){ doorOpen(false); });
-door.addEventListener('click', function(){ doorOpen(!door.classList.contains('open')); });
+door.addEventListener('click', function(){ if (performance.now() - doorHoverT < 700) return; doorOpen(!door.classList.contains('open')); });
 
 /* ---------------- fuzzballs multiply and spill downstairs */
 var fuzzN = 0;
@@ -95,7 +96,7 @@ $('.fuzz').addEventListener('click', function(){
 var box = $('.box'), boxN = 0;
 box.addEventListener('click', function(){
   boxN++; box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake'); SFX.thud();
-  if (boxN >= 3) box.classList.add('nudged');
+  if (boxN >= 3 && !box.classList.contains('nudged')){ box.classList.add('nudged'); var o6 = $('[data-orb="6"]'); if (o6){ o6.classList.add('out'); o6.tabIndex = 0; } }
 });
 
 /* ---------------- shelf brackets pop coins */
@@ -114,6 +115,7 @@ $$('.bracket').forEach(function(b){
 var hilt = $('.hilt');
 ['mouseenter','focus'].forEach(function(ev){ hilt.addEventListener(ev, function(){ hilt.classList.add('hum'); humOn(); }); });
 ['mouseleave','blur'].forEach(function(ev){ hilt.addEventListener(ev, function(){ hilt.classList.remove('hum'); humOff(); }); });
+hilt.addEventListener('click', function(){ hilt.classList.add('hum'); humOn(); clearTimeout(hilt._t); hilt._t = setTimeout(function(){ hilt.classList.remove('hum'); humOff(); }, 1500); });
 
 /* ---------------- projects: drop the P1 token */
 var ports = $$('.port'), plist = $$('.plist li'), tok = $('.p1tok');
@@ -158,11 +160,11 @@ function tick(ts){
   requestAnimationFrame(tick);
 }
 requestAnimationFrame(tick);
-corgi.parentNode.addEventListener('click', function(e){ if (e.target === corgi && cg.state === 'sleep'){ cg.x = cgL().home; cgSet('sit'); cg.lastNear = performance.now(); } });
+corgi.parentNode.addEventListener('click', function(e){ if (e.target !== corgi) return; if (cg.x === null) cg.x = cgL().home; if (cg.state === 'sleep') cgSet('sit'); cg.lastNear = performance.now(); target = cg.x + (cg.x > cgL().home + 20 ? -40 : 40); });
 
 /* ---------------- drum kit: keyboard-playable only while the kit is focused or hovered */
 var kit = $('.kit'), hits = 0, KEYS = {}, drums = $$('.drum');
-drums.forEach(function(d){ KEYS[d.dataset.key.toLowerCase()] = d; if (d.dataset.key === 'B') KEYS[' '] = d; });
+drums.forEach(function(d){ KEYS[d.dataset.key.toLowerCase()] = d; });
 function play(d){ d.classList.add('hit'); setTimeout(function(){ d.classList.remove('hit'); }, 90); SFX.drum(d.dataset.drum); hits++; if (hits === CFG.orb5at) showOrb(5); }
 drums.forEach(function(d){ d.addEventListener('pointerdown', function(e){ e.preventDefault(); play(d); kit.focus({preventScroll:true}); }); });
 kit.addEventListener('keydown', function(e){ if (e.metaKey || e.ctrlKey || e.altKey) return; var d = KEYS[e.key.toLowerCase()]; if (d){ e.preventDefault(); play(d); } });
@@ -175,9 +177,10 @@ kitZone.addEventListener('mouseleave', function(){ if (document.activeElement ==
 /* ---------------- orbs (7, persisted) */
 var got = ls('r5.orbs') || [];
 function dots(){ $$('.dot').forEach(function(d){ d.classList.toggle('on', got.indexOf(+d.dataset.dot) >= 0); }); }
-function showOrb(n){ var o = $('[data-orb="' + n + '"]'); if (o && got.indexOf(n) < 0) o.classList.remove('hide'); }
+function showOrb(n){ var o = $('[data-orb="' + n + '"]'); if (o && got.indexOf(n) < 0){ o.classList.remove('hide'); o.tabIndex = 0; } }
 function collect(n){ if (got.indexOf(n) >= 0) return; got.push(n); ls('r5.orbs', got); var o = $('[data-orb="' + n + '"]'); if (o) o.classList.add('got'); SFX.orb(); dots(); if (got.length === 7){ root.classList.add('gold'); ls('r5.gold', true); } }
 $$('[data-orb]').forEach(function(o){ var n = +o.dataset.orb; if (got.indexOf(n) >= 0) o.classList.add('got');
+  if (o.classList.contains('hide') || n === 2 || n === 6) o.tabIndex = -1;
   o.addEventListener('click', function(e){ e.stopPropagation(); collect(n); });
   o.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); collect(n); } }); });
 dots();
@@ -188,8 +191,9 @@ var KON = ['arrowup','arrowup','arrowdown','arrowdown','arrowleft','arrowright',
 document.addEventListener('keydown', function(e){
   var tg = e.target; if (tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA' || tg.isContentEditable)) return;
   if (kit.contains(tg) || tg === kit) { ki = 0; return; }
-  ki = (e.key.toLowerCase() === KON[ki]) ? ki + 1 : (e.key.toLowerCase() === KON[0] ? 1 : 0);
-  if (ki === KON.length){ ki = 0; var f = document.createElement('div'); f.className = 'flick'; document.body.appendChild(f); setTimeout(function(){ f.remove(); }, 1200);
+  var k = e.key.toLowerCase();
+  ki = (k === KON[ki]) ? ki + 1 : (k === KON[0] ? (ki === 2 ? 2 : 1) : 0);
+  if (ki === KON.length){ ki = 0; if (!RM){ var f = document.createElement('div'); f.className = 'flick'; document.body.appendChild(f); setTimeout(function(){ f.remove(); }, 1200); }
     var L = cgL(); if (cg.x === null) cg.x = L.home; cgSet('walk'); cg.lastNear = performance.now() + 8000; lapQ = [L.max, L.min, L.home]; }
 });
 
@@ -229,9 +233,17 @@ if (root.classList.contains('winter') && !RM){
 }
 
 /* ---------------- games: tabs, full screen, scores */
-var frame = $('#gframe');
-$$('.gtab').forEach(function(b){ b.addEventListener('click', function(){ $$('.gtab').forEach(function(x){ x.setAttribute('aria-pressed', String(x === b)); }); frame.src = '/games/' + b.dataset.game + '/index.html'; frame.title = b.textContent; }); });
-$('#gfs').addEventListener('click', function(){ if (frame.requestFullscreen) frame.requestFullscreen(); });
+var frame = $('#gframe'), want = frame.dataset.src, loaded = false;
+function load(){ if (!loaded){ loaded = true; frame.src = want; } }
+$$('.gtab').forEach(function(b){ b.addEventListener('click', function(){ $$('.gtab').forEach(function(x){ x.setAttribute('aria-pressed', String(x === b)); }); want = '/games/' + b.dataset.game + '/index.html'; frame.title = b.textContent; loaded = false; load(); }); });
+if ('IntersectionObserver' in window){
+  new IntersectionObserver(function(es){ if (es[0].isIntersecting) load(); }, {rootMargin:'400px 0px'}).observe(frame);
+  new IntersectionObserver(function(es){ if (!es[0].isIntersecting && loaded && frame.contentWindow) frame.contentWindow.postMessage('nl:pause', location.origin); }, {threshold:0}).observe(frame);
+} else load();
+$('#gfs').addEventListener('click', function(){ load();
+  var go = frame.requestFullscreen || frame.webkitRequestFullscreen;
+  if (go) go.call(frame); else window.open(want, '_blank', 'noopener');
+});
 function fmtLap(s){ if (s == null) return '-:--.---'; var m = Math.floor(s/60); return m + ':' + (s - m*60).toFixed(3).padStart(6, '0'); }
 var base0 = null;
 function readScores(){
