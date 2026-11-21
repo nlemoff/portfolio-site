@@ -705,10 +705,8 @@ def cfg():
         a = A[k]; return f"--ax:{a['x']};--ay:{a['y']};--sw:{a['w']};--sh:{a['h']};--n:{a['n']}"
     cd, cm = zr['D']['ov']['corgi'], zr['M']['ov']['corgi']
     spill = []
-    for i in range(5):   # on the shelf
-        spill.append(dict(z='room', x=104 + i * 11, y=153 - (i % 2) * 2, mx=44 + i * 8, my=227 - (i % 2) * 2))
-    for i in range(4):   # on the floor by the door
-        spill.append(dict(z='room', x=88 + i * 6, y=285, mx=60 + i * 7, my=673))
+    for i in range(9):   # off the shelf and onto the floor by the door (never in front of the trophies)
+        spill.append(dict(z='room', x=90 + i * 6, y=285 - (i % 2), mx=58 + i * 6, my=673 - (i % 2)))
     for i in range(6):   # down the garage stairs
         spill.append(dict(z='garage', x=44 + (i + 5) * 5, y=(i + 6) * 16 - 2 - 7, mx=112 + i * 7, my=193))
     spill.append(dict(z='garage', x=104, y=189, mx=150, my=193))

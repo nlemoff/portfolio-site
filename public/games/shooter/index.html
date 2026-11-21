@@ -17,6 +17,7 @@
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--ink);overflow:hidden;color:var(--c1);font-family:"Pixelify Sans",ui-monospace,monospace;font-size:var(--fs);line-height:1.2;font-variant-ligatures:none;-webkit-user-select:none;user-select:none}
 #c{position:absolute;left:0;top:0;image-rendering:pixelated;image-rendering:crisp-edges;cursor:crosshair;display:block}
+body.freelook #c{cursor:none}
 .hidden{display:none!important}
 /* overlays */
 .ov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:.6em}
@@ -688,7 +689,8 @@ const S={
 // ===================================================================
 let state='title',gt=0,runT=0,shake=0,LB=0,hitT=0,killT=0,hitstop=0,redF=0,shF=0,pickF=0,vmKick=0,flashT=0,flashKind='rifle',nadeAnim=0,pumpT=0;
 let PROJ_L=[],NADES=[],PARTS=[],BOOMS=[],MSGS=[],HURT=[],FLOW=new Int16Array(MW*MH),flowT=0,deniedT=0,alarmT=0,aimEnemy=false,party=false,total=0,startTime=0;
-let mouseL=false,locked=false,lockedOnce=false,ignoreMouseUntil=0,sens=lsGet('ringfall.sens',1);
+// lockFailed: this browser/context refused pointer lock, so the mouse looks around without capture (free look)
+let mouseL=false,locked=false,lockedOnce=false,lockFailed=false,lockTimer=0,overCv=false,mouseNX=0,freeHint=false,ignoreMouseUntil=0,sens=lsGet('ringfall.sens',1);
 const K={};
 function msg(t,cls){MSGS=MSGS.filter(m=>m.t!==t);MSGS.unshift({t,c:cls||'',life:2.6});if(MSGS.length>3)MSGS.length=3;}
 function newGame(){
@@ -856,6 +858,8 @@ function update(dt){
   const ca=Math.cos(P.a),sa=Math.sin(P.a);
   let f=(K.KeyW||K.ArrowUp?1:0)-(K.KeyS||K.ArrowDown?1:0),s=(K.KeyD?1:0)-(K.KeyA?1:0);
   const turn=(K.ArrowRight?1:0)-(K.ArrowLeft?1:0);P.a+=turn*2.6*dt*sens;
+  // free look: an uncaptured cursor stops at the window edge, so holding it near an edge keeps turning
+  if(freeLook()&&overCv&&Math.abs(mouseNX)>.8)P.a+=Math.sign(mouseNX)*(Math.abs(mouseNX)-.8)/.2*2.4*dt*sens;
   let wx=ca*f-sa*s,wy=sa*f+ca*s;const wl=Math.hypot(wx,wy);if(wl>0){wx=wx/wl*4.4;wy=wy/wl*4.4;}
   const acc=1-Math.exp(-dt*(wl>0?11:9));P.vx+=(wx-P.vx)*acc;P.vy+=(wy-P.vy)*acc;
   moveEnt(P,P.vx*dt,P.vy*dt,.24);
@@ -1128,7 +1132,7 @@ function domHud(){
   if(isP){const hk=Math.round(P.heat);if(HV.heat!==hk){HV.heat=hk;E.heatI.style.width=hk+'%';}setC(E.heat,'h','hot',P.overheat>0||P.heat>70);}
   else{const n=P.w===0?P.ammo:P.shells;setT(E.am,'am',String(n));setC(E.am,'a','out',n<=0);}
   if(HV.nd!==P.nades){HV.nd=P.nades;[...E.nd.children].forEach((c,i)=>c.className=i<P.nades?'f':'');}
-  setC(E.clk,'c','hidden',!(!locked&&lockedOnce&&state==='playing'));
+  setC(E.clk,'c','hidden',!(!locked&&lockedOnce&&!lockFailed&&state==='playing'));
   // motion tracker
   const g=E.rg,R=15;g.fillStyle='rgba(13,11,26,.72)';g.fillRect(0,0,31,31);
   g.fillStyle='#222b5c';g.fillRect(15,0,1,31);g.fillRect(0,15,31,1);
@@ -1173,8 +1177,16 @@ try{new IntersectionObserver(es=>{onScreen=es[es.length-1].isIntersecting;if(onS
 // ===================================================================
 const $=id=>document.getElementById(id);
 const ovTitle=$('ovTitle'),ovPause=$('ovPause'),ovEnd=$('ovEnd');
-function show(el){[ovTitle,ovPause,ovEnd].forEach(o=>o.classList.toggle('hidden',o!==el));document.body.classList.toggle('playing',!el);$('hud').classList.toggle('hidden',state==='title');needDraw=true;kick();}
-function lockPointer(){try{const r=cv.requestPointerLock&&cv.requestPointerLock();if(r&&r.catch)r.catch(()=>{});}catch(e){}}
+function show(el){[ovTitle,ovPause,ovEnd].forEach(o=>o.classList.toggle('hidden',o!==el));document.body.classList.toggle('playing',!el);document.body.classList.toggle('freelook',!el&&lockFailed&&!locked);$('hud').classList.toggle('hidden',state==='title');needDraw=true;kick();}
+function freeLook(){return state==='playing'&&!locked&&lockFailed;}
+function setFree(on){lockFailed=on;document.body.classList.toggle('freelook',freeLook());
+  if(freeLook()&&!freeHint){freeHint=true;msg('Hold the cursor at an edge to keep turning');}}
+function lockPointer(){
+  clearTimeout(lockTimer);
+  // anything other than a lock within 400ms (refusal, error, no API) falls back to free look
+  lockTimer=setTimeout(()=>{if(state==='playing'&&!locked)setFree(true);},400);
+  try{if(!cv.requestPointerLock){setFree(true);return;}const r=cv.requestPointerLock();if(r&&r.catch)r.catch(()=>{if(!locked)setFree(true);});}catch(e){setFree(true);}
+}
 function releaseKeys(){for(const k in K)K[k]=false;mouseL=false;}
 function startGame(){aInitIfOn();newGame();state='playing';show(null);ignoreMouseUntil=performance.now()+250;lockPointer();S.ambStart();last=performance.now();}
 function pause(){if(state!=='playing')return;state='paused';releaseKeys();S.chargeStop();P.charge=0;P.chargeT=0;if(document.pointerLockElement)try{document.exitPointerLock();}catch(e){}show(ovPause);setTimeout(()=>$('resumeBtn').focus({preventScroll:true}),0);}
@@ -1216,16 +1228,21 @@ $('restartBtn').addEventListener('click',startGame);
 $('againBtn').addEventListener('click',startGame);
 const sensEl=$('sens');sensEl.value=sens;$('sensV').textContent=(+sens).toFixed(2);
 sensEl.addEventListener('input',()=>{sens=+sensEl.value;$('sensV').textContent=sens.toFixed(2);lsSet('ringfall.sens',sens);});
-document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockElement===cv;if(locked)lockedOnce=true;else if(state==='playing'&&lockedOnce)pause();});
-document.addEventListener('pointerlockerror',()=>{locked=false;});
+document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockElement===cv;if(locked){lockedOnce=true;clearTimeout(lockTimer);setFree(false);}else if(state==='playing'&&lockedOnce)pause();});
+document.addEventListener('pointerlockerror',()=>{locked=false;if(state==='playing')setFree(true);});
 cv.addEventListener('mousedown',e=>{
   if(state!=='playing')return;
-  if(!locked&&lockedOnce){lockPointer();return;}
+  if(!locked&&lockedOnce&&!lockFailed){lockPointer();return;}
   if(e.button===0)mouseL=true;else if(e.button===2){throwNade();}
 });
 addEventListener('mouseup',e=>{if(e.button===0)mouseL=false;});
 cv.addEventListener('contextmenu',e=>e.preventDefault());
-addEventListener('mousemove',e=>{if(state!=='playing'||!locked||P.dead)return;const mx=clamp(e.movementX||0,-250,250);P.a+=mx*.0022*sens;});
+addEventListener('mousemove',e=>{
+  if(!locked){overCv=e.target===cv;if(overCv){const r=cv.getBoundingClientRect();mouseNX=clamp(((e.clientX-r.left)/r.width)*2-1,-1,1);}}
+  if(state!=='playing'||P.dead)return;
+  if(!locked&&!(freeLook()&&overCv))return;
+  const mx=clamp(e.movementX||0,-250,250);P.a+=mx*.0022*sens;});
+document.addEventListener('mouseleave',()=>{overCv=false;});
 // wheel: one weapon step per notch (trackpads send bursts), never scroll the house page while playing
 let wheelAcc=0,wheelT=0;
 addEventListener('wheel',e=>{if(state!=='playing')return;e.preventDefault();const now=performance.now();if(now-wheelT>250)wheelAcc=0;wheelAcc+=e.deltaY;

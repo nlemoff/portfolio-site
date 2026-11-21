@@ -23,6 +23,7 @@ html,body{margin:0;height:100%;background:var(--ink);color:var(--cream);overflow
 #app{position:fixed;inset:0;overflow:hidden;background:var(--ink);user-select:none;-webkit-user-select:none}
 #gl,#xh{position:absolute;inset:0;width:100%;height:100%;display:block}
 #xh{pointer-events:none;z-index:3}
+#app.nocur,#app.nocur *{cursor:none}
 button,input,select{font:inherit;color:inherit}
 button{cursor:pointer}
 .hidden{display:none!important}
@@ -242,7 +243,6 @@ input[type=range]::-moz-range-thumb{width:.9rem;height:1.1rem;background:var(--g
     </div>
   </div>
 
-  <div id="arm" class="ov dim hidden"><div class="panel card"><h1>Ready</h1><div class="row"><button class="btn go" id="btnArm">Click to start</button><button class="btn" id="btnArmBack">Menu</button></div></div></div>
 
   <div id="pause" class="ov dim hidden"><div class="panel card"><h1>Paused</h1><div class="row"><button class="btn go" id="btnResume">Resume</button><button class="btn" id="btnRestart">Restart</button><button class="btn" id="btnQuit">Menu</button></div></div></div>
 
@@ -355,8 +355,12 @@ function convert(g, dpc = degPerCount()){
    ===================================================================== */
 const $ = s => document.querySelector(s);
 const app = $('#app'), glCanvas = $('#gl'), xhCanvas = $('#xh');
-const UI = {title:$('#title'), settings:$('#settings'), hud:$('#hud'), pause:$('#pause'), results:$('#results'), touch:$('#touch'), arm:$('#arm'), corner:$('#corner')};
-function show(which){ for (const k in UI) UI[k].classList.toggle('hidden', !which.includes(k)); markDirty(); }
+const UI = {title:$('#title'), settings:$('#settings'), hud:$('#hud'), pause:$('#pause'), results:$('#results'), touch:$('#touch'), corner:$('#corner')};
+function show(which){
+  for (const k in UI) UI[k].classList.toggle('hidden', !which.includes(k));
+  app.classList.toggle('nocur', freeAim && (state === 'play' || state === 'countdown'));
+  markDirty();
+}
 let toastT = 0;
 function toast(msg, ms = 2200){ const t = $('#toast'); t.textContent = msg; t.classList.remove('hidden'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.add('hidden'), ms); }
 const hudEl = {score:$('#hScore'), time:$('#hTime'), bar:$('#hBar'), acc:$('#hAcc'), accL:$('#hRL'), streak:$('#hStreak'), count:$('#hCount')};
@@ -612,23 +616,46 @@ function verticalFov(){
 }
 function applyFov(){ camera.fov = verticalFov(); camera.updateProjectionMatrix(); markDirty(); }
 
-let locked = false, rawInput = null, testMode = false, firing = false;
-async function lockPointer(){
+// freeAim: the fallback when the browser refuses pointer lock (some webviews, embeds, the
+// short cooldown after Esc). The cursor is hidden over the game and aim follows mousemove
+// movementX/Y with the same counts-to-degrees math, so it only turns while the cursor is in the frame.
+let locked = false, rawInput = null, testMode = false, firing = false, freeAim = false, lockRefusals = 0, lastLockTry = 0, freeNoted = false;
+const LOCK_WAIT = 400;
+async function requestLock(){
   try{
     const p = app.requestPointerLock({unadjustedMovement:true});
-    if (p && typeof p.then === 'function'){ await p; rawInput = true; }
-    else rawInput = false; // older Safari: no promise, no raw option
-    return true;
+    if (p && typeof p.then === 'function'){ await p; rawInput = true; return true; }
+    rawInput = false; // older Safari: no promise, no raw option
+    return null;      // unknown: wait for the change/error event
   }catch(e){
     if (e && e.name === 'NotSupportedError'){
-      try{ const p2 = app.requestPointerLock(); if (p2 && p2.then) await p2; rawInput = false; return true; }catch(e2){ return false; }
+      try{ const p2 = app.requestPointerLock(); rawInput = false; if (p2 && p2.then){ await p2; return true; } return null; }catch(e2){ return false; }
     }
     return false;
   }
 }
+// resolves true once locked; false on refusal, error, or no lock within LOCK_WAIT ms
+function lockPointer(){
+  lastLockTry = performance.now();
+  return new Promise(resolve => {
+    let done = false;
+    const fin = ok => { if (done) return; done = true; clearTimeout(to); document.removeEventListener('pointerlockchange', onChange); document.removeEventListener('pointerlockerror', onErr); if (ok) lockRefusals = 0; else lockRefusals++; resolve(ok); };
+    const onChange = () => { if (document.pointerLockElement === app) fin(true); };
+    const onErr = () => fin(false);
+    const to = setTimeout(() => fin(document.pointerLockElement === app), LOCK_WAIT);
+    document.addEventListener('pointerlockchange', onChange); document.addEventListener('pointerlockerror', onErr);
+    requestLock().then(r => { if (r === true) fin(true); else if (r === false) fin(false); }, () => fin(false));
+  });
+}
+function goFree(){
+  freeAim = true; skipMove = true;
+  if (!freeNoted){ freeNoted = true; toast('Mouse capture unavailable: aim stays inside the frame', 3200); }
+  renderSens();
+}
 document.addEventListener('pointerlockchange', () => {
   locked = document.pointerLockElement === app;
   if (locked){
+    if (freeAim){ freeAim = false; app.classList.remove('nocur'); }
     if (state === 'arming') beginCountdown();
     else if (state === 'paused') resume();
   } else {
@@ -637,7 +664,6 @@ document.addEventListener('pointerlockchange', () => {
   }
   renderSens();
 });
-document.addEventListener('pointerlockerror', () => { if (state === 'arming' || state === 'paused'){ show(state === 'arming' ? ['arm', 'corner'] : ['pause', 'corner']); toast('Mouse lock blocked. Click again in a second.'); } });
 
 // one raw count turns sens x yaw degrees, exactly like the game
 function onLook(dx, dy){
@@ -646,14 +672,23 @@ function onLook(dx, dy){
   pitch = Math.max(-1.553, Math.min(1.553, pitch - dy * k * (S.invertY ? -1 : 1)));
   applyCam();
 }
+let skipMove = false;
 document.addEventListener('mousemove', e => {
-  if (!(locked || testMode)) return;
+  if (!(locked || testMode || freeAim)) return;
   if (state !== 'play' && state !== 'countdown') return;
+  if (freeAim && !locked){
+    // first move after the cursor re-enters the frame can carry a jump from outside
+    if (skipMove || Math.abs(e.movementX) > 300 || Math.abs(e.movementY) > 300){ skipMove = false; return; }
+  }
   onLook(e.movementX, e.movementY);
 });
+document.documentElement.addEventListener('mouseleave', () => { skipMove = true; firing = false; });
+document.documentElement.addEventListener('mouseenter', () => { skipMove = true; });
 document.addEventListener('mousedown', e => {
-  if (!(locked || testMode) || e.button !== 0) return;
+  if (!(locked || testMode || freeAim) || e.button !== 0) return;
   if (state === 'play'){ firing = true; if (R.mode !== 'track') shoot(); }
+  // in fallback, a click is a user gesture: quietly try to capture the mouse again (stops after 3 refusals)
+  if (freeAim && !locked && (state === 'play' || state === 'countdown') && lockRefusals < 3 && performance.now() - lastLockTry > 2000) lockPointer();
 });
 document.addEventListener('mouseup', e => { if (e.button === 0) firing = false; });
 // the page around the iframe must not scroll while you play
@@ -715,12 +750,16 @@ function startRound(mode){
   bot.bodyMat.uniforms.uColor.value.set(mode === 'track' ? TARGET : BOTBODY);
   hudEl.accL.textContent = mode === 'track' ? 'On target' : mode === 'reflex' ? 'Reaction' : 'Accuracy';
   updateHud(); updateClock();
+  freeAim = false;
   if (testMode || locked){ beginCountdown(); return; }
+  if (lockRefusals >= 3){ goFree(); beginCountdown(); return; } // this context never grants the lock
   state = 'arming';
   show(['hud']);
-  // the overlay only appears if the browser does not grant the lock straight away
-  setTimeout(() => { if (state === 'arming') show(['arm', 'corner']); }, 250);
-  lockPointer();
+  lockPointer().then(ok => {
+    if (state !== 'arming') return;
+    if (!ok) goFree();
+    beginCountdown();
+  });
 }
 function beginCountdown(){
   state = 'countdown'; R.cd = 3; R.lastBeep = 4;
@@ -743,7 +782,12 @@ function pause(){
 }
 async function resume(){
   if (state !== 'paused') return;
-  if (!locked && !testMode){ const ok = await lockPointer(); if (!ok) toast('Mouse lock blocked. Click Resume again in a second.'); return; }
+  if (!locked && !testMode){
+    const ok = lockRefusals >= 3 ? false : await lockPointer();
+    if (state !== 'paused') return;   // pointerlockchange already resumed
+    if (!ok) goFree();
+    else if (!locked) return;
+  }
   state = pausedFrom || 'play';
   if (state === 'countdown'){ R.cd = 3; R.lastBeep = 4; }
   show(['hud']);
@@ -1049,8 +1093,9 @@ function renderTitle(){
 function renderSens(){
   $('#tSens').innerHTML = `${sensLabel()} &middot; ${D(fmt(cm360(), 1))} cm/360`;
   const note = $('#rawNote');
-  note.textContent = rawInput === false ? 'This browser gave no raw mouse input, so OS pointer acceleration can change the turn. Chrome or Edge on Windows give raw input.' : '';
-  note.className = rawInput === false ? 'note warn' : 'note';
+  note.textContent = freeAim ? 'Mouse capture unavailable here: aim only turns while the cursor is in the frame, and OS acceleration applies.'
+    : rawInput === false ? 'This browser gave no raw mouse input, so OS pointer acceleration can change the turn. Chrome or Edge on Windows give raw input.' : '';
+  note.className = note.textContent ? 'note warn' : 'note';
 }
 let settingsFrom = 'title';
 function openSettings(from = 'title', tab){
@@ -1294,7 +1339,7 @@ document.addEventListener('keydown', e => {
   if (k === 'm'){ toggleSound(); return; }
   if (k === 'r'){ if (state === 'play' || state === 'countdown' || state === 'paused' || state === 'results'){ e.preventDefault(); restart(); } return; }
   if (e.key === 'Escape'){
-    if (testMode && (state === 'play' || state === 'countdown')) pause();
+    if ((testMode || (freeAim && !locked)) && (state === 'play' || state === 'countdown')) pause();
     else if (!UI.settings.classList.contains('hidden')) closeSettings();
     return;
   }
@@ -1315,8 +1360,6 @@ document.addEventListener('webkitfullscreenchange', syncFs);
 $('#btnStart').onclick = () => startRound(modeId);
 $('#btnSettings').onclick = () => openSettings('title');
 $('#btnDone').onclick = closeSettings;
-$('#btnArm').onclick = async () => { const ok = await lockPointer(); if (!ok) toast('Mouse lock blocked. Click again in a second.'); };
-$('#btnArmBack').onclick = toTitle;
 $('#btnResume').onclick = () => resume();
 $('#btnRestart').onclick = restart;
 $('#btnQuit').onclick = toTitle;
