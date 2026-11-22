@@ -830,19 +830,6 @@ LOGOS = {
         "TTTTT...TTTTT",
         "TTTT.....TTTT",
     ],
-    'fullproof': [  # the fingerprint O
-        "...OOOOO...",
-        ".OOOOOOOOO.",
-        ".OO.....OO.",
-        "OO..ooo..OO",
-        "OO.o...o.OO",
-        "OO.o.o.o.OO",
-        "OO.o.o.o.OO",
-        "OO...o.o.OO",
-        ".OO....oOO.",
-        ".OOOOOOOOO.",
-        "...OOOOO...",
-    ],
     'feb': [  # one slanted slab, blue over gold
         "....4444.",
         "...4444..",
@@ -891,8 +878,45 @@ def _mojo():
     return c
 
 
+def _fullproof():
+    """the magnifying-glass O: a solid ring on the left that breaks into bubbles on the right, handle of linked dots"""
+    import math
+    c = Canvas(13, 11)
+    cx, cy = 6.5, 4.6
+    fill = {}
+    for y in range(11):
+        for x in range(13):
+            px_, py_ = x + .5, y + .5
+            d = math.hypot(px_ - cx, py_ - cy)
+            a = math.degrees(math.atan2(py_ - cy, px_ - cx)) % 360   # screen angle, clockwise from +x
+            if 2.3 <= d <= 4.4 and 125 <= a <= 295:
+                fill[(x, y)] = 1
+    for ang, r in ((-35, 1.25), (5, 1.5), (45, 1.15), (82, 1.45), (112, .8)):
+        bx = cx + 3.35 * math.cos(math.radians(ang)); by = cy + 3.35 * math.sin(math.radians(ang))
+        for y in range(11):
+            for x in range(13):
+                if math.hypot(x + .5 - bx, y + .5 - by) <= r:
+                    fill[(x, y)] = 1
+    for dist_, r in ((5.6, .75), (7.2, 1.05)):
+        bx = cx + dist_ * math.cos(math.radians(130)); by = cy + dist_ * math.sin(math.radians(130))
+        for y in range(11):
+            for x in range(13):
+                if math.hypot(x + .5 - bx, y + .5 - by) <= r:
+                    fill[(x, y)] = 1
+    for (x, y) in fill:
+        c.px(x, y, 'g3')
+    return c
+
+
 def logo(name):
-    m = _mojo() if name == 'mojo' else grid(LOGOS[name])
+    m = _mojo() if name == 'mojo' else _fullproof() if name == 'fullproof' else grid(LOGOS[name])
+    if name == 'fullproof':   # amber reads faint on parchment: shade the lower-right edges
+        g, h = C('g3'), C('g2')
+        a = m.a.copy()
+        for y in range(m.h):
+            for x in range(m.w):
+                if a[y, x] == g and (y + 1 >= m.h or a[y + 1, x] == T or x + 1 >= m.w or a[y, x + 1] == T):
+                    m.a[y, x] = h
     out = Canvas(max(LOGO_W, m.w), LOGO_H)
     out.blit(m, (out.w - m.w) // 2, (LOGO_H - m.h) // 2)
     return out

@@ -84,7 +84,7 @@ WORK = [
     'Mojo Vision, Data Science Intern, 2023–24',
 ]
 EMAIL = 'mailto:nlemoff@gmail.com'
-XPOST = 'https://x.com/nlemoff'
+XPOST = 'https://x.com/nlemoff/status/2109824932712784277'
 LINKS = {'X': 'https://x.com/nlemoff', 'LinkedIn': 'https://www.linkedin.com/in/nicklemoff', 'GitHub': 'https://github.com/nlemoff'}
 LOGO_KEY = {'Judgment Labs': 'judgment', 'FullProof': 'fullproof', 'Formula Electric at Berkeley': 'feb', 'NIST': 'nist', 'Berkeley Lab': 'berkeleylab', 'Mojo Vision': 'mojo'}
 SFRB = 'https://github.com/nlemoff/SfRB'
@@ -108,7 +108,7 @@ def build(dc=False):
                      extra=f'--fd:{260 + i * 70}ms;--dl:{-i * 0.7:.1f}s', attrs='aria-hidden="true"'))
     hero = el('div', 'top', 'hero', 'tb hero', kind='tx', inner=(
         '<h1>Nick Lemoff</h1>'
-        '<p class="lede">I work on agent evals at Judgment Labs.</p>'))
+        '<p class="lede">I\'m at Judgment Labs.</p>'))
     planet_inner = (S('orb1', 'orb', attrs='data-orb="1" role="button" tabindex="0" aria-label="Orb"', extra='left:calc(24*var(--px));top:calc(2*var(--px))')
                     if not dc else S('orb1', 'orb', extra='left:calc(24*var(--px));top:calc(2*var(--px))'))
     top = f'''
@@ -133,7 +133,7 @@ def build(dc=False):
                 f'<span><b>{co}</b><span class="role">{role} · <span class="nw">{yrs}</span></span></span></li>')
     work = ''.join(job(w) for w in WORK)
     papers = {
-        'w1': f'<a href="{XPOST}" {ext}>Aligning agent evals with your own judgment</a> <span class="meta">(X, 2026)</span>',
+        'w1': f'<a href="{XPOST}" {ext}>Aligning agent evals with your personal judgment</a> <span class="meta">(X, 2026)</span>',
         'w2': 'Finding undocumented oil and gas wells on historical maps <span class="meta">(AGU, 2024)</span>',
         'w3': 'Computed materials proposals depart from the structural memory of experimental discovery <span class="meta">(arXiv, 2026, co-author)</span>',
     }
