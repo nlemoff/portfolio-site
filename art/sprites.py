@@ -814,3 +814,85 @@ def guitar():
                 from px import LEGEND
                 g.px(x, y, LEGEND[ch])
     return g
+
+
+# ------------------------------------------------------------------ work logos (pixel takes on each mark)
+LOGO_W, LOGO_H = 15, 11
+LOGOS = {
+    'judgment': [  # two posts with feet kicked outward
+        "....TT.TT....",
+        "....TT.TT....",
+        "....TT.TT....",
+        "....TT.TT....",
+        "....TT.TT....",
+        "....TT.TT....",
+        "....T...T....",
+        "TTTTT...TTTTT",
+        "TTTT.....TTTT",
+    ],
+    'fullproof': [  # the fingerprint O
+        "...OOOOO...",
+        ".OOOOOOOOO.",
+        ".OO.....OO.",
+        "OO..ooo..OO",
+        "OO.o...o.OO",
+        "OO.o.o.o.OO",
+        "OO.o.o.o.OO",
+        "OO...o.o.OO",
+        ".OO....oOO.",
+        ".OOOOOOOOO.",
+        "...OOOOO...",
+    ],
+    'feb': [  # one slanted slab, blue over gold
+        "....4444.",
+        "...4444..",
+        "..4444...",
+        ".4444GGGG",
+        "4444GGGGh",
+        "...GGGGh.",
+        "..GGGGh..",
+        ".hhhhh...",
+    ],
+    'nist': [
+        "K..K.K..KKK.KKK",
+        "KK.K.K.K.....K.",
+        "KK.K.K.K.....K.",
+        "K.KK.K..KK...K.",
+        "K.KK.K....K..K.",
+        "K..K.K....K..K.",
+        "K..K.K.KKK...K.",
+    ],
+    'berkeleylab': [  # the dome and the tower, on navy
+        ".222222222222.",
+        "22222222222WW2",
+        "2222WWWW222WW2",
+        "222W2222W22WW2",
+        "22W222222W2WW2",
+        "2WWWWWWWWWWWW2",
+        "2W2W2W2W2W2WW2",
+        "2WWWWWWWWWWWW2",
+        "22222222222222",
+        ".222222222222.",
+    ],
+}
+
+
+def _mojo():
+    """two half rings: the upper one cyan, the lower one ink, offset so they make a wave"""
+    import math
+    from px import LEGEND
+    c = Canvas(13, 8)
+    for y in range(8):
+        for x in range(13):
+            for cx, cy, top, col in ((4.5, 4.0, True, 'n'), (8.5, 3.0, False, 'K')):
+                d = math.hypot(x + .5 - cx, y + .5 - cy)
+                if 2.6 <= d <= 4.6 and ((y + .5 <= cy) if top else (y + .5 >= cy)):
+                    c.px(x, y, LEGEND[col])
+    return c
+
+
+def logo(name):
+    m = _mojo() if name == 'mojo' else grid(LOGOS[name])
+    out = Canvas(max(LOGO_W, m.w), LOGO_H)
+    out.blit(m, (out.w - m.w) // 2, (LOGO_H - m.h) // 2)
+    return out

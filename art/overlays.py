@@ -288,6 +288,8 @@ ALL = {
     'p1': lambda: [S.p1token()], 'pt-evie': lambda: portrait('evie'), 'pt-sfrb': lambda: portrait('sfrb'), 'pt-feb': lambda: portrait('feb'),
     'star': lambda: [grid(f) for f in S.STAR],
 }
+for k in ['judgment', 'fullproof', 'feb', 'nist', 'berkeleylab', 'mojo']:
+    ALL['logo-' + k] = (lambda k=k: [S.logo(k)])
 for i in range(1, 8):
     ALL['orb%d' % i] = (lambda i=i: [S.orb(i)])
 for k in ['crash', 'ride', 'hihat', 'tom1', 'tom2', 'kick', 'snare', 'floortom']:

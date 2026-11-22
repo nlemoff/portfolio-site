@@ -83,9 +83,10 @@ WORK = [
     'Berkeley Lab, ML Student Assistant, 2023–24',
     'Mojo Vision, Data Science Intern, 2023–24',
 ]
-EMAIL = 'mailto:hello@nlemoff.com'
+EMAIL = 'mailto:nlemoff@gmail.com'
 XPOST = 'https://x.com/nlemoff'
 LINKS = {'X': 'https://x.com/nlemoff', 'LinkedIn': 'https://www.linkedin.com/in/nicklemoff', 'GitHub': 'https://github.com/nlemoff'}
+LOGO_KEY = {'Judgment Labs': 'judgment', 'FullProof': 'fullproof', 'Formula Electric at Berkeley': 'feb', 'NIST': 'nist', 'Berkeley Lab': 'berkeleylab', 'Mojo Vision': 'mojo'}
 SFRB = 'https://github.com/nlemoff/SfRB'
 EXT = 'target="_blank" rel="noopener"'
 
@@ -124,7 +125,13 @@ def build(dc=False):
 </section>'''
 
     # ------------------------------------------------ ROOM
-    work = ''.join('<li><b>{0}</b>, {1}, <span class="nw">{2}</span></li>'.format(work_split(w)[0], *work_split(w)[1].rsplit(', ', 1)) for w in WORK)
+    def job(w):
+        co, rest = work_split(w)
+        role, yrs = rest.rsplit(', ', 1)
+        icon = S('logo-' + LOGO_KEY[co], 'logo', attrs='aria-hidden="true"')
+        return (f'<li>{icon}'
+                f'<span><b>{co}</b><span class="role">{role} · <span class="nw">{yrs}</span></span></span></li>')
+    work = ''.join(job(w) for w in WORK)
     papers = {
         'w1': f'<a href="{XPOST}" {ext}>Aligning agent evals with your own judgment</a> <span class="meta">(X, 2026)</span>',
         'w2': 'Finding undocumented oil and gas wells on historical maps <span class="meta">(AGU, 2024)</span>',
@@ -147,7 +154,7 @@ def build(dc=False):
 <section class="zone" id="room" style="{bgvars('room')}" aria-label="Work, projects and writing">
  <div class="stage">
   {el('h2', 'room', 'worktitle', 'tb banner', kind='tx', inner='Work')}
-  {el('div', 'room', 'work', 'tb maptext t3', kind='tx', inner='<ul>' + work + '</ul>', extra='--x3:52;--y3:70;--w3:134;--h3:48')}
+  {el('div', 'room', 'work', 'tb maptext t3', kind='tx', inner='<ul>' + work + '</ul>', extra='--x3:50;--y3:62;--w3:138;--h3:72')}
   {writing_label}
   {paper_html}
   {projects}
@@ -287,12 +294,12 @@ html.gold .zone::before{background-image:var(--dl3)} html.gold .zone::after{back
 
 /* ------------ map (work) */
 .maptext{color:var(--mapink);font-size:calc(var(--fs)*1.12);line-height:1.2}
-.maptext li{line-height:1.52 !important}
-@media (max-width:1424px){.maptext li{line-height:1.15 !important}}
 .banner{display:flex;align-items:center;justify-content:center;color:#4e1420;font-weight:700;font-size:calc(var(--fs)*1.1);line-height:1;margin:0}
-.maptext li{padding-left:calc(var(--px)*3);position:relative;line-height:1.3}
-.maptext li::before{content:"";position:absolute;left:0;top:.45em;width:calc(var(--px)*1.5);height:calc(var(--px)*1.5);background:var(--r2)}
-.maptext b{font-weight:600}
+.maptext ul{height:100%;display:flex;flex-direction:column;justify-content:space-between}
+.maptext li{display:flex;align-items:center;gap:calc(var(--px)*3)}
+.maptext .logo{position:relative;flex:none}
+.maptext b{display:block;font-weight:600;line-height:1.1}
+.maptext .role{display:block;font-size:.86em;line-height:1.15;color:var(--paper-meta)}
 /* corkboard */
 .tape{display:flex;align-items:center;justify-content:center;background:var(--c1);color:var(--w0);font-size:var(--fs);line-height:1;box-shadow:0 calc(var(--px)*.5) 0 var(--c2)}
 .paper{padding:calc(var(--px)*1.5) calc(var(--px)*2);color:var(--paper);font-size:var(--fs);line-height:1.22;overflow:hidden}
@@ -405,7 +412,7 @@ html.gold .night-only{display:block}
   /* 3x art, text kept at 15px: the longest note takes the board's width, the map list gets a little more parchment */
   .p.t3{left:calc(var(--x3)*var(--px));top:calc(var(--y3)*var(--px));width:calc(var(--w3)*var(--px));height:calc(var(--h3)*var(--px))}
   .paper.t3{background:var(--paperbg);box-shadow:0 0 0 var(--px) #0d0b1a,var(--px) var(--px) 0 var(--px) #0d0b1a}
-  .maptext{font-size:var(--fs)} .maptext li{line-height:1.12}
+  .maptext{font-size:var(--fs)}
   .screen{padding:var(--px) calc(var(--px)*2);line-height:1.12}
   .screen h2{margin-bottom:var(--px)} .ports{margin-bottom:var(--px)} .plist li{padding:0}
 }
@@ -418,7 +425,7 @@ html.gold .night-only{display:block}
   .dn-d{display:block !important} .dn-m{display:none !important}
   .hero h1{font-size:calc(var(--px)*22)}
   .hero p{font-size:calc(var(--px)*8.5)}
-  .maptext{font-size:var(--fs)} .maptext li{line-height:1.2}
+  .maptext{font-size:var(--fs)}
   .paper{font-size:var(--fs)}
 }
 @media (max-width:1072px) and (prefers-color-scheme:dark){

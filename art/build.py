@@ -40,7 +40,7 @@ for zn in ZONES:
 
 # ---------------------------------------------------------------- atlas
 LIT_AS = {'corgiwalk': 'corgi', 'corgisit': 'corgi', 'coin': 'bracket0', 'bracket': 'bracket0', 'hit': None, 'diver': None, 'puff': None,
-          'star': None, 'orb1': None, 'orb2': None, 'orb3': None, 'orb4': None, 'orb5': None, 'orb6': None, 'orb7': None, 'p1': None, 'pt-evie': None, 'pt-sfrb': None, 'pt-feb': None, 'dragon': None, 'planet': None, 'smoke': None}
+          'star': None, 'orb1': None, 'orb2': None, 'orb3': None, 'orb4': None, 'orb5': None, 'orb6': None, 'orb7': None, 'p1': None, 'pt-evie': None, 'pt-sfrb': None, 'pt-feb': None, **{'logo-' + k: 'map' for k in ('judgment', 'fullproof', 'feb', 'nist', 'berkeleylab', 'mojo')}, 'dragon': None, 'planet': None, 'smoke': None}
 entries = []
 for key, fn in O.ALL.items():
     frames = fn()

@@ -959,9 +959,9 @@ def room_D(mode):
     room_shell(z, x0, x1, H, floor, mode)
     slab(c, 36, floor + 4, 288, H - floor - 4)
     # ---------------- upper wall: map, sash, corkboard
-    b = draw_map(z, 46, 10, 144, 110, 60)
+    b = draw_map(z, 46, 10, 144, 128, 50)
     z.t('worktitle', *b)
-    z.t('work', 54, 72, 130, 44)
+    z.t('work', 52, 63, 134, 70)
     sash(c, 194, 14, 82)
     draw_corkboard(z, 208, 12, 106, 100, [
         ('w1', 214, 18, 46, 40, 'print'),
@@ -1018,7 +1018,7 @@ def room_D(mode):
     ao(z, 228, 255, 88, 37, .6)
     ao(z, 46, 160, 124, 6, .5)
     ao(z, x0, 6, x1 - x0, 8, .4)
-    finish_light(z, x0, x1, mode, [(48, 12, 140, 106), (208, 12, 106, 100)])
+    finish_light(z, x0, x1, mode, [(48, 12, 140, 124), (208, 12, 106, 100)])
     return z
 
 
@@ -1702,9 +1702,9 @@ def room_M(mode):
     z.o('steam', 52, f1 - 62, 8, 12)
     # hall: map, door, coats, CD tower, rug + corgi
     hy = f1 + 14
-    b = draw_map(z, 20, hy + 6, 140, 158, 52, seed=6)
+    b = draw_map(z, 20, hy + 6, 140, 158, 46, seed=6)
     z.t('worktitle', *b)
-    z.t('work', 25, hy + 60, 132, 102)
+    z.t('work', 25, hy + 55, 132, 104)
     door(z, 22, f2 - 88, 34, 88)
     coat_rail(c, 62, f2 - 108, 40)
     c.blit(grid(S.ROBE), 63, f2 - 108)
