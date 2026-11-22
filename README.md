@@ -1,62 +1,24 @@
-# Nicholas Lemoff's Portfolio
+# nlemoff.com
 
-A modern, responsive portfolio website built with Next.js and styled with Tailwind CSS. The site features a vaporwave-inspired design theme and showcases my projects, skills, and experience.
+My personal site: one 8-bit cross-section of my place in Oakland, from the sky down to a basement with three playable games.
 
-## Features
+Built with [Astro](https://astro.build) as a static site and deployed to GitHub Pages (`.github/workflows/deploy.yml`) on every push to `main`.
 
-- 🌙 Dark mode by default with light mode toggle
-- 🎨 Vaporwave-inspired design theme
-- 📱 Fully responsive layout
-- 📬 Contact form with EmailJS integration
-- 🚀 Optimized performance with Next.js
-- 🎯 SEO-friendly
+## Run it
 
-## Technologies Used
-
-- [Next.js](https://nextjs.org/) - React framework for production
-- [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
-- [EmailJS](https://www.emailjs.com/) - Email service integration
-- [React Hook Form](https://react-hook-form.com/) - Form handling
-- [TypeScript](https://www.typescriptlang.org/) - Type safety
-
-## Getting Started
-
-1. Clone the repository:
-```bash
-git clone https://github.com/nlemoff/portfolio-site.git
-cd portfolio-site
-```
-
-2. Install dependencies:
 ```bash
 npm install
+npm run dev      # http://localhost:4321
+npm run build    # static output in out/
 ```
 
-3. Run the development server:
-```bash
-npm run dev
-```
+## How it's put together
 
-4. Open [http://localhost:3000](http://localhost:3000) with your browser to see the site.
+- `art/`: the pixel-art pipeline (Python 3 with `numpy` and `Pillow`). Every scene, sprite and the page layout are drawn in code from one palette.
+  - `build.py` renders all images into `public/house/` and writes `art/layout.json`.
+  - `page.py` turns the layout into `src/generated/house.html`, `src/styles/house.css` and `src/scripts/house.js`.
+  - `npm run art` runs both. Edit the Python, not the generated files.
+- `src/pages/index.astro`: the page shell (meta tags, font) around the generated house.
+- `public/games/`: the three games (Time Trial, Aim Trainer, Ringfall), each a self-contained page loaded into the basement CRT. three.js 0.170.0 is vendored in `public/games/vendor/` (MIT).
 
-## Building for Production
-
-To create a production build:
-
-```bash
-npm run build
-```
-
-To start the production server:
-
-```bash
-npm start
-```
-
-## Deployment
-
-The site is deployed on GitHub Pages. The deployment is handled automatically through GitHub Actions when changes are pushed to the main branch.
-
-## License
-
-MIT License - feel free to use this code for your own portfolio!
+Add `?date=YYYY-MM-DD&time=HH:MM` to the URL to preview seasons and time of day.
