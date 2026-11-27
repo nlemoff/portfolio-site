@@ -238,7 +238,7 @@ body.driving #corner:hover,body.driving #corner:focus-within{opacity:1}
     <div class="chk"><span>Throttle</span><i><b id="ckThr"></b></i></div>
     <div class="chk"><span>Brake</span><i><b id="ckBrk"></b></i></div>
     <label class="chk"><span>Rotation</span><span><input id="suRot" type="number" min="90" max="2520" step="10" style="width:5em;font-size:.85em"> ° lock to lock <small id="suRotHint"></small></span></label>
-    <div class="chk" id="ffbRow"><span>Force</span><span><button class="btn" id="ffbBtn">Connect force feedback</button> <input id="ffbGain" type="range" min="0" max="100" step="5" style="width:6em" aria-label="Force feedback strength"> <label><input id="ffbInv" type="checkbox"> invert</label> <small id="ffbMsg"></small></span></div>
+    <div class="chk" id="ffbRow"><span>Force</span><span><button class="btn" id="ffbBtn">Connect force feedback</button> <button class="btn hidden" id="ffbTest">Test</button> <input id="ffbGain" type="range" min="0" max="100" step="5" style="width:6em" aria-label="Force feedback strength"> <label><input id="ffbInv" type="checkbox"> invert</label> <small id="ffbMsg"></small></span></div>
   </div>
   <div class="chk sucode"><span>Setup code</span><span><input id="suCode" type="text" spellcheck="false" autocomplete="off" placeholder="Paste a saved code to skip setup" aria-label="Wheel setup code"> <button class="btn" id="suCopy">Copy</button> <button class="btn" id="suLoad">Load</button> <small id="suCodeMsg"></small></span></div>
   <div class="menu">
@@ -970,10 +970,11 @@ function makeCar(ghost, look) {
   const helmM = M({ color: 0xf4f2ec, metalness: 0.2, roughness: 0.25 });
   const helm = add(new THREE.SphereGeometry(0.125, 18, 14), helmM, -0.16, 0.86, 0, driver);
   if (!ghost) { add(new THREE.SphereGeometry(0.128, 24, 12, -1.0, 2.0, 1.2, 0.42), M({ color: 0x0d0f14, metalness: 0.9, roughness: 0.08 }), -0.16, 0.86, 0, driver).rotation.y = Math.PI / 2; add(new THREE.TorusGeometry(0.126, 0.012, 6, 24), M({ color: look.helmet, roughness: 0.4 }), -0.16, 0.86, 0, driver).rotation.y = Math.PI / 2; }
-  const torso = add(new THREE.CylinderGeometry(0.15, 0.12, 0.38, 12), suitM, -0.16, 0.56, 0, driver); torso.rotation.z = 0.42; torso.scale.set(0.8, 1, 1.2);
-  add(new THREE.CapsuleGeometry(0.055, 0.28, 4, 10), suitM, -0.1, 0.71, 0, driver).rotation.x = Math.PI / 2;               // shoulders
-  add(new THREE.CylinderGeometry(0.05, 0.055, 0.08, 10), suitM, -0.15, 0.77, 0, driver);                               // neck / HANS
-  if (!ghost) for (const sz of [1, -1]) tube([-0.2, 0.76, sz * 0.09], [-0.02, 0.5, sz * 0.05], 0.012, M({ color: 0x1f3c9e, roughness: 0.8 }), driver); // harness
+  const torsoParts = [];
+  const torso = add(new THREE.CylinderGeometry(0.15, 0.12, 0.38, 12), suitM, -0.16, 0.56, 0, driver); torso.rotation.z = 0.42; torso.scale.set(0.8, 1, 1.2); torsoParts.push(torso);
+  const shoulders = add(new THREE.CapsuleGeometry(0.055, 0.28, 4, 10), suitM, -0.1, 0.71, 0, driver); shoulders.rotation.x = Math.PI / 2; torsoParts.push(shoulders);
+  torsoParts.push(add(new THREE.CylinderGeometry(0.05, 0.055, 0.08, 10), suitM, -0.15, 0.77, 0, driver));               // neck / HANS
+  if (!ghost) for (const sz of [1, -1]) torsoParts.push(tube([-0.2, 0.76, sz * 0.09], [-0.02, 0.5, sz * 0.05], 0.012, M({ color: 0x1f3c9e, roughness: 0.8 }), driver)); // harness
   // the front hoop is inside the dash cowl on all three cars, so only the steering column is modelled
   tube([0.34, 0.6, 0], [0.78, 0.42, 0], 0.012, alu);
   const swheel = new THREE.Group(); swheel.position.set(0.34, 0.6, 0); swheel.rotation.z = 0.35; body.add(swheel);
@@ -990,15 +991,15 @@ function makeCar(ghost, look) {
   const arms = [1, -1].map(sz => ({ sz, up: add(new THREE.CylinderGeometry(0.03, 0.028, 1, 8), suitM, 0, 0, 0, driver), fo: add(new THREE.CylinderGeometry(0.026, 0.024, 1, 8), suitM, 0, 0, 0, driver) }));
   // TSAL on top of the main hoop
   const tsal = add(new THREE.CylinderGeometry(0.03, 0.03, 0.05, 10), ghost ? carbon : new THREE.MeshStandardMaterial({ color: 0x2a0606, emissive: 0xff2020, emissiveIntensity: 0, roughness: 0.3 }), -0.32, 1.17, 0);
-  const built = { g, body, wheels, tsal, helm, driver, sw, swheel, hands, arms, dash, ghost, mats: { body: bodyM, tub: tubM } };
+  const built = { g, body, wheels, tsal, helm, driver, sw, swheel, hands, arms, dash, ghost, torso: torsoParts, mats: { body: bodyM, tub: tubM } };
   poseDriver(built, 0, true);
   return built;
 }
 /* arms follow the hands on the turning wheel (two-bone, elbows out and down) */
 const _inv = new THREE.Matrix4(), _sh = new THREE.Vector3(), _hd = new THREE.Vector3(), _el = new THREE.Vector3(), _d = new THREE.Vector3(), _Y = new THREE.Vector3(0, 1, 0);
 function setBone(m, a, b) { _d.copy(b).sub(a); const L = _d.length(); m.position.copy(a).addScaledVector(_d, 0.5); m.scale.set(1, L, 1); m.quaternion.setFromUnitVectors(_Y, _d.normalize()); }
-// firstPerson: the camera sits just above the shoulders, so the upper arms and most of the forearms would run
-// past the lens as long poles; draw only the wrists into the gloves, as onboard footage shows them
+// firstPerson (driver and onboard cameras): the camera is at or just behind the driver's head, so the arms run
+// from beside the lens to the wheel and read as poles on some screens; show only the gloves on the wheel
 function poseDriver(c3, delta, force, firstPerson) {
   if (c3.ghost && !force) return;
   c3.sw.rotation.x = -delta * VP.rack;
@@ -1008,8 +1009,7 @@ function poseDriver(c3, delta, force, firstPerson) {
     _sh.set(-0.1, 0.72, a.sz * 0.17);
     c3.hands[i].getWorldPosition(_hd); _hd.applyMatrix4(inv);
     _el.copy(_sh).lerp(_hd, 0.5); _el.y -= 0.07; _el.z += a.sz * 0.06;
-    a.up.visible = !firstPerson;
-    if (firstPerson) _el.set(_hd.x - 0.14, _hd.y - 0.17, _hd.z + a.sz * 0.05);   // forearm rises from below the cockpit edge
+    a.up.visible = a.fo.visible = !firstPerson;   // first person: gloves on the wheel only
     setBone(a.up, _sh, _el); setBone(a.fo, _el, _hd);
   });
 }
@@ -1927,7 +1927,7 @@ function bindSetupButtons() {
   $('suRot').addEventListener('change', () => { prefs.wheelRot = clamp(+$('suRot').value || 900, 90, 2520); $('suRot').value = prefs.wheelRot; savePrefs(); });
   $('ffbGain').addEventListener('input', () => { prefs.ffbGain = +$('ffbGain').value; savePrefs(); });
   $('ffbInv').addEventListener('change', () => { prefs.ffbInv = $('ffbInv').checked; savePrefs(); });
-  btn('ffbBtn', () => FFB.dev ? ffbClose() : ffbConnect());
+  btn('ffbBtn', () => FFB.dev ? ffbClose() : ffbConnect()); btn('ffbTest', ffbTest);
   btn('suCopy', copySetupCode); btn('suLoad', loadSetupCode);
   $('suCode').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') loadSetupCode(); });   // typing here isn't driving
 }
@@ -1969,14 +1969,15 @@ function packReport(r, vals) {
 async function ffbConnect() {
   try {
     const [dev] = await navigator.hid.requestDevice({ filters: [{ usagePage: PID }, { vendorId: 0x346E }] });
-    if (!dev) return;
+    if (!dev) { FFB.err = 'No device chosen'; ffbStatus(); return; }
     if (!dev.opened) await dev.open();
     const outs = hidReports(dev, 'outputReports'), feats = hidReports(dev, 'featureReports');
     const r = {
       effect: outs.find(x => hasU(x, 0x50)), constant: outs.find(x => hasU(x, 0x70) && !hasU(x, 0x72)), op: outs.find(x => hasU(x, 0x78) || hasU(x, 0x7C)),
       ctrl: outs.find(x => hasU(x, 0x97) || hasU(x, 0x9A)), gain: outs.find(x => hasU(x, 0x7E)), create: feats.find(x => hasU(x, 0x25)), load: feats.find(x => hasU(x, 0x8B) || hasU(x, 0x8C))
     };
-    if (!r.effect || !r.constant || !r.op) throw new Error('this device has no constant-force effect');
+    FFB.found = Object.entries(r).filter(([, x]) => x).map(([k]) => k).join(' ');
+    if (!r.effect || !r.constant || !r.op) throw new Error('no constant-force effect on this device (found: ' + (FFB.found || 'none') + ')');
     FFB.dev = dev; FFB.r = r;
     const send = (rep, v) => dev.sendReport(rep.reportId, packReport(rep, v));
     if (r.ctrl) { await send(r.ctrl, { 0x9A: true }); await send(r.ctrl, { 0x97: true }); }   // reset, enable actuators
@@ -1991,11 +1992,25 @@ async function ffbConnect() {
     await send(r.constant, { 0x22: FFB.block, 0x70: 0 });
     await send(r.op, { 0x22: FFB.block, 0x79: true, 0x7C: 1 });
     FFB.err = ''; dev.addEventListener?.('disconnect', ffbClose);
-  } catch (e) { FFB.err = String(e.message || e); FFB.dev = null; }
+  } catch (e) {
+    FFB.dev = null;
+    // inside the homepage the iframe must allow "hid"; an older cached homepage doesn't
+    FFB.err = e && e.name === 'SecurityError' ? 'Blocked here: open nlemoff.com/games/racing on its own and try again' : String((e && e.message) || e);
+  }
   ffbStatus();
 }
+// push the wheel one way, then the other, so force feedback can be checked without driving
+async function ffbTest() {
+  if (!FFB.dev) { FFB.err = 'Connect first'; ffbStatus(); return; }
+  const it = FFB.r.constant.items.find(x => itemUsages(x).includes(pidU(0x70))), full = it ? Math.max(Math.abs(it.logicalMaximum), Math.abs(it.logicalMinimum)) : 10000;
+  const send = f => FFB.dev.sendReport(FFB.r.constant.reportId, packReport(FFB.r.constant, { 0x22: FFB.block, 0x70: f * full * (prefs.ffbInv ? -1 : 1) }));
+  FFB.testing = true;
+  try { for (const f of [0.5, 0, -0.5, 0]) { await send(f); await new Promise(r => setTimeout(r, f ? 450 : 150)); } $('ffbMsg').textContent = 'Felt it turn left, then right? If not: check force feedback is on in Pit House'; }
+  catch (e) { FFB.err = String(e.message || e); ffbStatus(); }
+  FFB.testing = false;
+}
 async function ffbClose() { const d = FFB.dev; FFB.dev = null; try { if (d && FFB.r) await d.sendReport(FFB.r.op.reportId, packReport(FFB.r.op, { 0x22: FFB.block, 0x7B: true, 0x7C: 1 })); if (d) await d.close(); } catch (e) {} ffbStatus(); }
-function ffbStatus() { if (!$('ffbBtn')) return; $('ffbBtn').textContent = FFB.dev ? 'Disconnect' : 'Connect force feedback'; $('ffbMsg').textContent = FFB.dev ? FFB.dev.productName || 'connected' : FFB.err; }
+function ffbStatus() { if (!$('ffbBtn')) return; $('ffbBtn').textContent = FFB.dev ? 'Disconnect' : 'Connect force feedback'; $('ffbTest').classList.toggle('hidden', !FFB.dev); $('ffbMsg').textContent = FFB.dev ? (FFB.dev.productName || 'connected') + (FFB.block ? ' · effect ' + FFB.block : '') : FFB.err; }
 // steering-wheel torque from the tyres, as a share of what the base can give (-1..1)
 function ffbTorque() {
   const c = car; let mz = 0;
@@ -2008,7 +2023,7 @@ function ffbTorque() {
   return clamp((atWheel + damp) / 25, -1, 1);                                          // 25 Nm at the rim = full scale (FSAE steering is heavy: ~16 Nm at 1 g)
 }
 function ffbUpdate(now) {
-  if (!FFB.dev || !FFB.r || now - FFB.last < 16) return; FFB.last = now;
+  if (!FFB.dev || !FFB.r || FFB.testing || now - FFB.last < 16) return; FFB.last = now;
   const live = G.mode === 'racing' || G.mode === 'countdown' || G.mode === 'done';
   const f = live && !G.paused ? ffbTorque() * (prefs.ffbInv ? -1 : 1) * (prefs.ffbGain ?? 60) / 100 : 0;
   const it = FFB.r.constant.items.find(x => itemUsages(x).includes(pidU(0x70))), mag = f * (it ? Math.max(Math.abs(it.logicalMaximum), Math.abs(it.logicalMinimum)) : 10000);
@@ -2342,7 +2357,9 @@ function tick(now) {
   car3.wheels.forEach((w, i) => { if (running) car.spin[i] -= car.w[i] * dt; w.spin.rotation.z = car.spin[i]; if (i < 2) w.steer.rotation.y = car.delta; });
   }
   car3.helm.visible = !(G.camMode === 3 && G.mode !== 'title');
-  poseDriver(car3, G.mode === 'title' ? 0 : car.delta, false, G.camMode === 3 && G.mode !== 'title'); if (G.mode !== 'title' && G.camMode === 3) updateDash(car3, v * 3.6, car.rpm);
+  const fp = G.camMode >= 2 && G.mode !== 'title';
+  poseDriver(car3, G.mode === 'title' ? 0 : car.delta, false, fp);
+  car3.torso.forEach(o => o.visible = !(G.camMode === 3 && G.mode !== 'title'));   // eye view: body parts at/behind the lens if (G.mode !== 'title' && G.camMode === 3) updateDash(car3, v * 3.6, car.rpm);
   car3.tsal.material.emissiveIntensity = ((G.mode === 'racing' || G.mode === 'title') && (performance.now() % 250) < 125) ? 4 : 0;
   // ghost
   let gpos = null;
