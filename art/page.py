@@ -209,7 +209,7 @@ def build(dc=False):
             '<button class="gtab" type="button" data-game="aim" aria-pressed="false">Aim Trainer</button>'
             '<button class="gtab" type="button" data-game="shooter" aria-pressed="false">Ringfall</button>'
             '<button class="gfs" type="button" id="gfs">Full screen</button></div>'
-            '<div class="gstage"><iframe id="gframe" data-src="/games/racing/index.html" title="Time Trial" allow="fullscreen; autoplay"></iframe></div>'))
+            '<div class="gstage"><iframe id="gframe" data-src="/games/racing/index.html" title="Time Trial" allow="fullscreen; autoplay; gamepad"></iframe></div>'))
     scores = el('div', 'base', 'scores', 'tb scores', kind='tx', inner=(
         '<table><tbody>'
         '<tr><th scope="row">Time Trial</th><td id="sc-racing">-:--.---</td></tr>'
