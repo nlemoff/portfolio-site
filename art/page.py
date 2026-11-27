@@ -209,7 +209,7 @@ def build(dc=False):
             '<button class="gtab" type="button" data-game="aim" aria-pressed="false">Aim Trainer</button>'
             '<button class="gtab" type="button" data-game="shooter" aria-pressed="false">Ringfall</button>'
             '<button class="gfs" type="button" id="gfs">Full screen</button></div>'
-            '<div class="gstage"><iframe id="gframe" data-src="/games/racing/index.html" title="Time Trial" allow="fullscreen; autoplay; gamepad"></iframe></div>'))
+            '<div class="gstage"><iframe id="gframe" data-src="/games/racing/index.html" title="Time Trial" allow="fullscreen; autoplay; gamepad; hid"></iframe></div>'))
     scores = el('div', 'base', 'scores', 'tb scores', kind='tx', inner=(
         '<table><tbody>'
         '<tr><th scope="row">Time Trial</th><td id="sc-racing">-:--.---</td></tr>'
@@ -680,7 +680,9 @@ if (root.classList.contains('winter') && !RM){
 
 /* ---------------- games: tabs, full screen, scores */
 var frame = $('#gframe'), want = frame.dataset.src, loaded = false;
-function load(){ if (!loaded){ loaded = true; frame.src = want; } }
+// ?v=<deploy time>: the games are cached for up to 10 min, and a refresh of the page doesn't refetch an iframe, so
+// without it a new deploy can take a while to show up inside the house
+function load(){ if (!loaded){ loaded = true; frame.src = want + '?v=' + (document.documentElement.dataset.build || ''); } }
 $$('.gtab').forEach(function(b){ b.addEventListener('click', function(){ $$('.gtab').forEach(function(x){ x.setAttribute('aria-pressed', String(x === b)); }); want = '/games/' + b.dataset.game + '/index.html'; frame.title = b.textContent; loaded = false; load(); }); });
 if ('IntersectionObserver' in window){
   new IntersectionObserver(function(es){ if (es[0].isIntersecting) load(); }, {rootMargin:'400px 0px'}).observe(frame);

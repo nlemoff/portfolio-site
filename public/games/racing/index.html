@@ -107,6 +107,7 @@ td.x{color:var(--red);text-decoration:line-through;text-decoration-thickness:2px
 .meter i{display:block;height:100%;width:0;background:var(--gold)}
 #suStep{min-height:2.4em;max-width:26em;margin-left:auto;margin-right:auto}
 #suCheck{margin-top:.8em;display:grid;gap:.45em;min-width:16em}
+.sucode{margin-top:.8em}.sucode input[type=text],#suRot{width:13em;max-width:100%;font:inherit;font-size:.85em;padding:.2em .4em;background:var(--ink);color:inherit;border:2px solid var(--n3)}
 .chk{display:grid;grid-template-columns:5.5em 1fr;align-items:center;gap:.6em;font-size:.85em;color:var(--n6);text-align:left}
 .chk i{position:relative;display:block;height:.8em;background:var(--ink);border:2px solid var(--n3)}
 .chk i b{position:absolute;top:0;bottom:0;left:0;width:0;background:var(--gold)}
@@ -141,6 +142,7 @@ td.x{color:var(--red);text-decoration:line-through;text-decoration-thickness:2px
 /* corner cluster: top right, same in every game */
 #corner{position:fixed;right:calc(var(--s)*.7);top:calc(var(--s)*.7);display:flex;gap:calc(var(--s)*.5);z-index:5}
 /* faded while driving, full strength on title, pause and results */
+body.fs.driving.idle,body.fs.driving.idle *{cursor:none!important}   /* full screen, driving, mouse still: no cursor */
 body.driving #corner{opacity:.35}
 body.driving #corner:hover,body.driving #corner:focus-within{opacity:1}
 .ib{pointer-events:auto;cursor:pointer;--ib:clamp(26px,calc(var(--s)*2.8),44px);width:var(--ib);height:var(--ib);padding:0;display:grid;place-items:center;background:var(--ink);color:var(--cream2);border:3px solid var(--cream2);box-shadow:3px 3px 0 var(--ink)}
@@ -236,9 +238,10 @@ body.driving #corner:hover,body.driving #corner:focus-within{opacity:1}
     <div class="chk"><span>Steering</span><i class="ctr"><b id="ckSteer"></b></i></div>
     <div class="chk"><span>Throttle</span><i><b id="ckThr"></b></i></div>
     <div class="chk"><span>Brake</span><i><b id="ckBrk"></b></i></div>
-    <label class="chk"><span>Rotation</span><span><input id="suRot" type="number" min="90" max="2520" step="10" style="width:5em"> ° lock to lock <small id="suRotHint"></small></span></label>
-    <div class="chk" id="ffbRow"><span>Force</span><span><button class="btn" id="ffbBtn">Connect force feedback</button> <input id="ffbGain" type="range" min="0" max="100" step="5" style="width:6em" aria-label="Force feedback strength"> <label><input id="ffbInv" type="checkbox"> invert</label> <small id="ffbMsg"></small></span></div>
+    <label class="chk"><span>Rotation</span><span><input id="suRot" type="number" min="90" max="2520" step="10" style="width:5em;font-size:.85em"> ° lock to lock <small id="suRotHint"></small></span></label>
+    <div class="chk" id="ffbRow"><span>Force</span><span><button class="btn" id="ffbBtn">Connect force feedback</button> <button class="btn hidden" id="ffbTest">Test</button> <input id="ffbGain" type="range" min="0" max="100" step="5" style="width:6em" aria-label="Force feedback strength"> <label><input id="ffbInv" type="checkbox"> invert</label> <small id="ffbMsg"></small></span></div>
   </div>
+  <div class="chk sucode"><span>Setup code</span><span><input id="suCode" type="text" spellcheck="false" autocomplete="off" placeholder="Paste a saved code to skip setup" aria-label="Wheel setup code"> <button class="btn" id="suCopy">Copy</button> <button class="btn" id="suLoad">Load</button> <small id="suCodeMsg"></small></span></div>
   <div class="menu">
     <button class="btn go hidden" id="suDone">Done</button>
     <button class="btn hidden" id="suRedo">Redo setup</button>
@@ -968,10 +971,11 @@ function makeCar(ghost, look) {
   const helmM = M({ color: 0xf4f2ec, metalness: 0.2, roughness: 0.25 });
   const helm = add(new THREE.SphereGeometry(0.125, 18, 14), helmM, -0.16, 0.86, 0, driver);
   if (!ghost) { add(new THREE.SphereGeometry(0.128, 24, 12, -1.0, 2.0, 1.2, 0.42), M({ color: 0x0d0f14, metalness: 0.9, roughness: 0.08 }), -0.16, 0.86, 0, driver).rotation.y = Math.PI / 2; add(new THREE.TorusGeometry(0.126, 0.012, 6, 24), M({ color: look.helmet, roughness: 0.4 }), -0.16, 0.86, 0, driver).rotation.y = Math.PI / 2; }
-  const torso = add(new THREE.CylinderGeometry(0.15, 0.12, 0.38, 12), suitM, -0.16, 0.56, 0, driver); torso.rotation.z = 0.42; torso.scale.set(0.8, 1, 1.2);
-  add(new THREE.CapsuleGeometry(0.055, 0.28, 4, 10), suitM, -0.1, 0.71, 0, driver).rotation.x = Math.PI / 2;               // shoulders
-  add(new THREE.CylinderGeometry(0.05, 0.055, 0.08, 10), suitM, -0.15, 0.77, 0, driver);                               // neck / HANS
-  if (!ghost) for (const sz of [1, -1]) tube([-0.2, 0.76, sz * 0.09], [-0.02, 0.5, sz * 0.05], 0.012, M({ color: 0x1f3c9e, roughness: 0.8 }), driver); // harness
+  const torsoParts = [];
+  const torso = add(new THREE.CylinderGeometry(0.15, 0.12, 0.38, 12), suitM, -0.16, 0.56, 0, driver); torso.rotation.z = 0.42; torso.scale.set(0.8, 1, 1.2); torsoParts.push(torso);
+  const shoulders = add(new THREE.CapsuleGeometry(0.055, 0.28, 4, 10), suitM, -0.1, 0.71, 0, driver); shoulders.rotation.x = Math.PI / 2; torsoParts.push(shoulders);
+  torsoParts.push(add(new THREE.CylinderGeometry(0.05, 0.055, 0.08, 10), suitM, -0.15, 0.77, 0, driver));               // neck / HANS
+  if (!ghost) for (const sz of [1, -1]) torsoParts.push(tube([-0.2, 0.76, sz * 0.09], [-0.02, 0.5, sz * 0.05], 0.012, M({ color: 0x1f3c9e, roughness: 0.8 }), driver)); // harness
   // the front hoop is inside the dash cowl on all three cars, so only the steering column is modelled
   tube([0.34, 0.6, 0], [0.78, 0.42, 0], 0.012, alu);
   const swheel = new THREE.Group(); swheel.position.set(0.34, 0.6, 0); swheel.rotation.z = 0.35; body.add(swheel);
@@ -988,15 +992,15 @@ function makeCar(ghost, look) {
   const arms = [1, -1].map(sz => ({ sz, up: add(new THREE.CylinderGeometry(0.03, 0.028, 1, 8), suitM, 0, 0, 0, driver), fo: add(new THREE.CylinderGeometry(0.026, 0.024, 1, 8), suitM, 0, 0, 0, driver) }));
   // TSAL on top of the main hoop
   const tsal = add(new THREE.CylinderGeometry(0.03, 0.03, 0.05, 10), ghost ? carbon : new THREE.MeshStandardMaterial({ color: 0x2a0606, emissive: 0xff2020, emissiveIntensity: 0, roughness: 0.3 }), -0.32, 1.17, 0);
-  const built = { g, body, wheels, tsal, helm, driver, sw, swheel, hands, arms, dash, ghost, mats: { body: bodyM, tub: tubM } };
+  const built = { g, body, wheels, tsal, helm, driver, sw, swheel, hands, arms, dash, ghost, torso: torsoParts, mats: { body: bodyM, tub: tubM } };
   poseDriver(built, 0, true);
   return built;
 }
 /* arms follow the hands on the turning wheel (two-bone, elbows out and down) */
 const _inv = new THREE.Matrix4(), _sh = new THREE.Vector3(), _hd = new THREE.Vector3(), _el = new THREE.Vector3(), _d = new THREE.Vector3(), _Y = new THREE.Vector3(0, 1, 0);
 function setBone(m, a, b) { _d.copy(b).sub(a); const L = _d.length(); m.position.copy(a).addScaledVector(_d, 0.5); m.scale.set(1, L, 1); m.quaternion.setFromUnitVectors(_Y, _d.normalize()); }
-// firstPerson: the camera sits just above the shoulders, so the upper arms and most of the forearms would run
-// past the lens as long poles; draw only the wrists into the gloves, as onboard footage shows them
+// firstPerson (driver and onboard cameras): the camera is at or just behind the driver's head, so the arms run
+// from beside the lens to the wheel and read as poles on some screens; show only the gloves on the wheel
 function poseDriver(c3, delta, force, firstPerson) {
   if (c3.ghost && !force) return;
   c3.sw.rotation.x = -delta * VP.rack;
@@ -1006,8 +1010,7 @@ function poseDriver(c3, delta, force, firstPerson) {
     _sh.set(-0.1, 0.72, a.sz * 0.17);
     c3.hands[i].getWorldPosition(_hd); _hd.applyMatrix4(inv);
     _el.copy(_sh).lerp(_hd, 0.5); _el.y -= 0.07; _el.z += a.sz * 0.06;
-    a.up.visible = !firstPerson;
-    if (firstPerson) _el.set(_hd.x - 0.14, _hd.y - 0.17, _hd.z + a.sz * 0.05);   // forearm rises from below the cockpit edge
+    a.up.visible = a.fo.visible = !firstPerson;   // first person: gloves on the wheel only
     setBone(a.up, _sh, _el); setBone(a.fo, _el, _hd);
   });
 }
@@ -1271,10 +1274,14 @@ function physStep(dt, inp, free) {
     c.tc = clamp(c.tc + dt * (tcOver > 1.05 ? -10 * (tcOver - 1) : 3), 0.15, 1);
     // ABS (an assist: none of the three cars has one): each wheel is held near peak slip; the target shrinks as the
     // tyre corners harder, since a tyre at peak brake slip has little side grip left
+    // Rear axle as real units do it, for stability: the rears are held well short of peak slip (a rear tyre at
+    // peak brake slip has little side grip, and that's a spin) and "select-low": both get the pressure the
+    // worse one can take.
     for (let i = 0; i < 4; i++) {
-      const lim = -PEAK.k * Math.max(0.3, 1 - (c.alp[i] / PEAK.a) ** 2);
+      const lim = -PEAK.k * (i < 2 ? 1 : 0.55) * Math.max(0.3, 1 - (c.alp[i] / PEAK.a) ** 2);
       c.abs[i] = clamp(c.abs[i] + dt * (kap[i] < lim ? -14 : 5), 0.1, 1);
     }
+    c.abs[2] = c.abs[3] = Math.min(c.abs[2], c.abs[3]);
   } else { c.tc = 1; c.abs.fill(1); }
   if (v > 0.05) { Fx -= drag * c.vx / v; Fy -= drag * c.vy / v; }
   const grade = free ? 0 : T.HD[c.idx] * Math.cos(c.psi - Math.atan2(T.TY[c.idx], T.TX[c.idx]));
@@ -1493,7 +1500,7 @@ function carPerf(E) {
 function driveLap(prof, E, mode = 'keys', trace, pace = 1) {   // pace: share of the line's speed the driver aims for
   const snap = structuredClone(car), N = RL.N, dt = 1 / 240, bad = [];
   const k0 = (N - Math.round(60 / T.ds)) % N; placeCar(k0, 0); car.x = RL.X[k0]; car.y = RL.Y[k0]; car.vx = prof.v[k0]; syncWheels(); vdReset();
-  let t = 0, dist = 0, prevS = car.s, tLap = 0, started = false, errMax = 0, hits = 0, kb = k0, key = 0, keyT = 0, maxBeta = 0, thrCap = 1, wide = 0, rk = 0;
+  let t = 0, dist = 0, prevS = car.s, tLap = 0, started = false, errMax = 0, hits = 0, kb = k0, key = 0, keyT = 0, maxBeta = 0, thrCap = 1, wide = 0, rk = 0, held = 0;
   while (t < 400) {
     const v = Math.max(1, Math.hypot(car.vx, car.vy));
     let bd = 1e9; const k = car.idx; for (let q = -6; q <= 6; q++) { const j = (k + q + N) % N, d = (RL.X[j] - car.x) ** 2 + (RL.Y[j] - car.y) ** 2; if (d < bd) { bd = d; kb = j; } }
@@ -1505,14 +1512,25 @@ function driveLap(prof, E, mode = 'keys', trace, pace = 1) {   // pace: share of
     const kNeed = 2 * ly / Math.max(1, L2), aMax = envAt(E.lat, v);
     let tv = prof.v[j2]; for (let q = 1, n = Math.max(1, Math.round(v * 0.3 / T.ds)); q <= n; q++) tv = Math.min(tv, prof.v[(kb + q) % N]); tv *= pace;
     let inp;
-    if (mode === 'rawkeys') {
+    if (mode === 'holdkeys') {
+      // a person on raw keys who holds the steering key through a corner rather than tapping finely: press while the
+      // line needs more than ~half of what's currently on, with ~0.15 s reactions; pedals on/off
+      const dNeed = Math.atan(VP.L * kNeed) + 0.0016 * kNeed * v * v;
+      keyT -= dt;
+      if (keyT <= 0) { const want = Math.abs(dNeed) > 0.015 && Math.abs(rk) < Math.abs(dNeed) * 1.5 ? Math.sign(dNeed) : 0; if (want !== key) { key = want; keyT = 0.1; } }
+      rk = keySteer(rk, key, v, dt);
+      // feet like a person following the colours: brake held from the marker until down to the corner speed,
+      // throttle back on once it's below
+      if (held === 1 && v <= tv) held = 0; else if (held !== 1 && v > tv + 0.6) held = 1;
+      const brakeK = held === 1, thrK = !brakeK && v < tv - 0.3 && prof.phase[kb] === 0;   // throttle on green only
+      inp = { delta: rk, thr: thrK ? 1 : 0, brake: brakeK ? 1 : 0 };
+    } else if (mode === 'rawkeys') {
       // a person tapping raw keys: steer key toward the angle the line needs (kinematic + a little understeer),
       // on/off pedals with a little hysteresis
       const dNeed = Math.atan(VP.L * kNeed) + 0.0016 * kNeed * v * v;
       keyT -= dt;
       if (keyT <= 0) { const want = dNeed > rk + 0.004 ? 1 : dNeed < rk - 0.004 ? -1 : 0; if (want !== key) { key = want; keyT = 0.05; } }
-      const tgt = key * DELTA_MAX, back = Math.abs(tgt) < Math.abs(rk) || tgt * rk < 0, rate = back ? 1.2 : 0.6;
-      rk += clamp(tgt - rk, -rate * dt, rate * dt);
+      rk = keySteer(rk, key, v, dt);
       const brakeK = v > tv + 0.3, thrK = !brakeK && v < tv - 0.3;
       inp = { delta: rk, thr: thrK ? 1 : 0, brake: brakeK ? 1 : 0 };
     } else if (mode === 'pad') {
@@ -1830,6 +1848,7 @@ function openSetup() {
   const p = pickPad(listPads()); if (!p) return;
   SU.back = G.mode === 'title' ? 'title' : 'pause';
   Object.assign(SU, { on: true, pad: p.index, step: -1, data: {}, check: false }); show(SU.back, false); show('setup', true);
+  $('suCode').value = binds[p.id] ? setupCode(p.id) : ''; codeMsg('');
   if (binds[p.id]) showCheck(); else nextStep();
 }
 // live view of what the game reads from the wheel and pedals
@@ -1848,10 +1867,38 @@ function redoSetup() {
 }
 function nextStep() {
   SU.step++; SU.base = null; SU.cand = null; SU.held = null; SU.settle = 0;
-  if (SU.step >= STEPS.length) { const p = navigator.getGamepads()[SU.pad]; if (p) { binds[p.id] = SU.data; saveBinds(); } showCheck(); return; }
+  if (SU.step >= STEPS.length) { const p = navigator.getGamepads()[SU.pad]; if (p) { binds[p.id] = SU.data; saveBinds(); $('suCode').value = setupCode(p.id); codeMsg('Saved in this browser. Copy the code to keep a backup.'); } showCheck(); return; }
   const s = STEPS[SU.step]; $('suStep').textContent = s.text; $('suSkip').classList.toggle('hidden', !s.btn); $('suMeter').style.width = '0';
 }
 function endSetup() { SU.on = false; SU.check = false; for (const id of ['suCheck', 'suDone', 'suRedo']) $(id).classList.add('hidden'); $('suMeterBox').classList.remove('hidden'); show('setup', false); if (SU.back) show(SU.back, true); padUI(); resimForDevice(); }
+/* Setup code: the wheel's bindings plus rotation and force-feedback settings as one line of text, so a setup can be
+   saved anywhere and pasted back (another browser, another computer, after clearing site data). Setups are also
+   kept automatically in this browser, per device. */
+const CODE_TAG = 'FEBWHEEL1:';
+function setupCode(id) {
+  const b = binds[id]; if (!b) return '';
+  return CODE_TAG + btoa(JSON.stringify({ b, r: prefs.wheelRot, g: prefs.ffbGain, i: !!prefs.ffbInv }));
+}
+function codeMsg(t) { $('suCodeMsg').textContent = t; }
+async function copySetupCode() {
+  const p = navigator.getGamepads()[SU.pad], code = p ? setupCode(p.id) : '';
+  if (!code) { codeMsg('Finish setup first'); return; }
+  $('suCode').value = code; $('suCode').select();
+  try { await navigator.clipboard.writeText(code); codeMsg('Copied. Save it anywhere.'); } catch (e) { codeMsg('Select the code and copy it'); }
+}
+function loadSetupCode() {
+  const p = navigator.getGamepads()[SU.pad], raw = $('suCode').value.trim();
+  if (!p) { codeMsg('Connect the wheel first'); return; }
+  try {
+    if (!raw.startsWith(CODE_TAG)) throw 0;
+    const d = JSON.parse(atob(raw.slice(CODE_TAG.length))), ok = ch => ch && (ch.t === 'a' || ch.t === 'b') && Number.isInteger(ch.i);
+    if (!d.b || !ok(d.b.steer) || !ok(d.b.thr) || !ok(d.b.brake)) throw 0;
+    binds[p.id] = d.b; saveBinds();
+    if (d.r) prefs.wheelRot = clamp(+d.r, 90, 2520); if (d.g != null) prefs.ffbGain = clamp(+d.g, 0, 100); prefs.ffbInv = !!d.i; savePrefs();
+    for (const id of ['suMeterBox', 'suSkip']) $(id).classList.add('hidden');
+    showCheck(); codeMsg('Loaded');
+  } catch (e) { codeMsg("That code doesn't look right"); }
+}
 function used(t, i) { return Object.values(SU.data).some(b => b.t === t && b.i === i); }
 function setupTick(p) {
   if (SU.waitRelease) { if (!p.buttons.some(b => bval(b) > 0.3)) { SU.waitRelease = false; nextStep(); } return; }
@@ -1896,7 +1943,9 @@ function bindSetupButtons() {
   $('suRot').addEventListener('change', () => { prefs.wheelRot = clamp(+$('suRot').value || 900, 90, 2520); $('suRot').value = prefs.wheelRot; savePrefs(); });
   $('ffbGain').addEventListener('input', () => { prefs.ffbGain = +$('ffbGain').value; savePrefs(); });
   $('ffbInv').addEventListener('change', () => { prefs.ffbInv = $('ffbInv').checked; savePrefs(); });
-  btn('ffbBtn', () => FFB.dev ? ffbClose() : ffbConnect());
+  btn('ffbBtn', () => FFB.dev ? ffbClose() : ffbConnect()); btn('ffbTest', ffbTest);
+  btn('suCopy', copySetupCode); btn('suLoad', loadSetupCode);
+  $('suCode').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') loadSetupCode(); });   // typing here isn't driving
 }
 
 /* ---- Force feedback (WebHID, Chrome/Edge) ----
@@ -1936,14 +1985,15 @@ function packReport(r, vals) {
 async function ffbConnect() {
   try {
     const [dev] = await navigator.hid.requestDevice({ filters: [{ usagePage: PID }, { vendorId: 0x346E }] });
-    if (!dev) return;
+    if (!dev) { FFB.err = 'No device chosen'; ffbStatus(); return; }
     if (!dev.opened) await dev.open();
     const outs = hidReports(dev, 'outputReports'), feats = hidReports(dev, 'featureReports');
     const r = {
       effect: outs.find(x => hasU(x, 0x50)), constant: outs.find(x => hasU(x, 0x70) && !hasU(x, 0x72)), op: outs.find(x => hasU(x, 0x78) || hasU(x, 0x7C)),
       ctrl: outs.find(x => hasU(x, 0x97) || hasU(x, 0x9A)), gain: outs.find(x => hasU(x, 0x7E)), create: feats.find(x => hasU(x, 0x25)), load: feats.find(x => hasU(x, 0x8B) || hasU(x, 0x8C))
     };
-    if (!r.effect || !r.constant || !r.op) throw new Error('this device has no constant-force effect');
+    FFB.found = Object.entries(r).filter(([, x]) => x).map(([k]) => k).join(' ');
+    if (!r.effect || !r.constant || !r.op) throw new Error('no constant-force effect on this device (found: ' + (FFB.found || 'none') + ')');
     FFB.dev = dev; FFB.r = r;
     const send = (rep, v) => dev.sendReport(rep.reportId, packReport(rep, v));
     if (r.ctrl) { await send(r.ctrl, { 0x9A: true }); await send(r.ctrl, { 0x97: true }); }   // reset, enable actuators
@@ -1958,11 +2008,25 @@ async function ffbConnect() {
     await send(r.constant, { 0x22: FFB.block, 0x70: 0 });
     await send(r.op, { 0x22: FFB.block, 0x79: true, 0x7C: 1 });
     FFB.err = ''; dev.addEventListener?.('disconnect', ffbClose);
-  } catch (e) { FFB.err = String(e.message || e); FFB.dev = null; }
+  } catch (e) {
+    FFB.dev = null;
+    // inside the homepage the iframe must allow "hid"; an older cached homepage doesn't
+    FFB.err = e && e.name === 'SecurityError' ? 'Blocked here: open nlemoff.com/games/racing on its own and try again' : String((e && e.message) || e);
+  }
   ffbStatus();
 }
+// push the wheel one way, then the other, so force feedback can be checked without driving
+async function ffbTest() {
+  if (!FFB.dev) { FFB.err = 'Connect first'; ffbStatus(); return; }
+  const it = FFB.r.constant.items.find(x => itemUsages(x).includes(pidU(0x70))), full = it ? Math.max(Math.abs(it.logicalMaximum), Math.abs(it.logicalMinimum)) : 10000;
+  const send = f => FFB.dev.sendReport(FFB.r.constant.reportId, packReport(FFB.r.constant, { 0x22: FFB.block, 0x70: f * full * (prefs.ffbInv ? -1 : 1) }));
+  FFB.testing = true;
+  try { for (const f of [0.5, 0, -0.5, 0]) { await send(f); await new Promise(r => setTimeout(r, f ? 450 : 150)); } $('ffbMsg').textContent = 'Felt it turn left, then right? If not: check force feedback is on in Pit House'; }
+  catch (e) { FFB.err = String(e.message || e); ffbStatus(); }
+  FFB.testing = false;
+}
 async function ffbClose() { const d = FFB.dev; FFB.dev = null; try { if (d && FFB.r) await d.sendReport(FFB.r.op.reportId, packReport(FFB.r.op, { 0x22: FFB.block, 0x7B: true, 0x7C: 1 })); if (d) await d.close(); } catch (e) {} ffbStatus(); }
-function ffbStatus() { if (!$('ffbBtn')) return; $('ffbBtn').textContent = FFB.dev ? 'Disconnect' : 'Connect force feedback'; $('ffbMsg').textContent = FFB.dev ? FFB.dev.productName || 'connected' : FFB.err; }
+function ffbStatus() { if (!$('ffbBtn')) return; $('ffbBtn').textContent = FFB.dev ? 'Disconnect' : 'Connect force feedback'; $('ffbTest').classList.toggle('hidden', !FFB.dev); $('ffbMsg').textContent = FFB.dev ? (FFB.dev.productName || 'connected') + (FFB.block ? ' · effect ' + FFB.block : '') : FFB.err; }
 // steering-wheel torque from the tyres, as a share of what the base can give (-1..1)
 function ffbTorque() {
   const c = car; let mz = 0;
@@ -1975,7 +2039,7 @@ function ffbTorque() {
   return clamp((atWheel + damp) / 25, -1, 1);                                          // 25 Nm at the rim = full scale (FSAE steering is heavy: ~16 Nm at 1 g)
 }
 function ffbUpdate(now) {
-  if (!FFB.dev || !FFB.r || now - FFB.last < 16) return; FFB.last = now;
+  if (!FFB.dev || !FFB.r || FFB.testing || now - FFB.last < 16) return; FFB.last = now;
   const live = G.mode === 'racing' || G.mode === 'countdown' || G.mode === 'done';
   const f = live && !G.paused ? ffbTorque() * (prefs.ffbInv ? -1 : 1) * (prefs.ffbGain ?? 60) / 100 : 0;
   const it = FFB.r.constant.items.find(x => itemUsages(x).includes(pidU(0x70))), mag = f * (it ? Math.max(Math.abs(it.logicalMaximum), Math.abs(it.logicalMinimum)) : 10000);
@@ -2033,8 +2097,12 @@ function onFS() {
   b.innerHTML = pixIcon(on ? FS_OUT : FS_IN); b.setAttribute('aria-label', on ? 'Exit full screen' : 'Full screen'); b.title = (on ? 'Exit full screen' : 'Full screen') + ' (F)';
   // Esc leaves full screen before the page sees the key, so treat that exit as a pause
   if (wasFS && !on && !fsMine) setPause(true);
-  wasFS = on; fsMine = false; wake();
+  wasFS = on; fsMine = false; document.body.classList.toggle('fs', on); mouseIdle(); wake();
 }
+// in full screen the cursor hides while driving once the mouse has been still for a moment; moving it brings it back
+let idleT = 0;
+function mouseIdle() { document.body.classList.remove('idle'); clearTimeout(idleT); idleT = setTimeout(() => document.body.classList.add('idle'), 1500); }
+addEventListener('mousemove', mouseIdle); addEventListener('mousedown', mouseIdle);
 document.addEventListener('fullscreenchange', onFS);
 if (parentDoc) parentDoc.addEventListener('fullscreenchange', onFS);
 
@@ -2207,18 +2275,32 @@ function inputs(dt) {
     const it = digital ? { digital, steer: ks, thr: kt ? 1 : 0, brake: kb ? 1 : 0 } : { digital, steer: PAD.steer, thr: PAD.thr, brake: PAD.brake };
     return virtualDriver(dt, it, envFor(VP.id));
   }
-  // raw (default): the inputs are the car's controls, as with a wheel. A held key turns the steering at a steady
-  // hand speed toward full lock (~34 deg/s at the road wheels, ~140 deg/s at the steering wheel) and lets it come
-  // back twice as fast; tap to hold part-lock. Throttle and brake are on or off. A stick maps straight to lock.
+  // raw (default): no driver model. Keys steer through keySteer (speed-sensitive, below); throttle and brake are
+  // on or off. A stick maps straight to lock.
   if (digital) {
-    const tgt = ks * DELTA_MAX, back = Math.abs(tgt) < Math.abs(RAWK.d) || tgt * RAWK.d < 0, rate = back ? 1.2 : 0.6;
-    RAWK.d += clamp(tgt - RAWK.d, -rate * dt, rate * dt);
+    RAWK.d = keySteer(RAWK.d, ks, Math.hypot(car.vx, car.vy), dt);
     return { delta: RAWK.d, thr: kt ? 1 : 0, brake: kb ? 1 : 0 };
   }
   RAWK.d = PAD.steer * DELTA_MAX;
   return { delta: RAWK.d, thr: PAD.thr, brake: PAD.brake };
 }
 const RAWK = { d: 0 };
+/* Raw key steering, speed-sensitive as keyboard steering is in racing games. An on/off key can't hold 2 deg at
+   130 km/h, and a fixed lock rate put 5 deg on with the shortest tap. So a held key winds on toward the angle the
+   car needs for its full cornering grip at this speed (kinematic angle + its ~0.9 deg/g of understeer) plus a margin
+   that overdrives the fronts (full 38 deg lock at walking pace); slower at speed (~0.45 s to that angle), quicker
+   at low speed. You can still overdrive the fronts, or brake or lift the car into a spin, but a tap is a tap.
+   Steering into a slide (opposite lock) gets the slide angle on top. Pedals stay on/off. */
+function keyLock(v) {
+  const grip = VP.mu * VP.g + AIR * Math.max(0, VP.ClA) * v * v * VP.mu / VP.m, vv = Math.max(v * v, 1);
+  return Math.min(DELTA_MAX, Math.atan(VP.L * grip / vv) + 0.0016 * grip + PEAK.a * 0.35);
+}
+function keySteer(d, key, v, dt) {
+  const beta = Math.atan2(car.vy, Math.max(Math.abs(car.vx), 0.5)), lock = keyLock(v);
+  const lim = Math.min(DELTA_MAX, lock + (v > 3 && key * beta > 0 ? Math.abs(beta) : 0));
+  const tgt = key * lim, back = Math.abs(tgt) < Math.abs(d) || tgt * d < 0, rate = clamp(lock / (v > 15 ? 0.45 : 0.3), 0.2, 1.4) * (back ? 2.5 : 1);
+  return d + clamp(tgt - d, -rate * dt, rate * dt);
+}
 function simulate(dt) {
   const inp = inputs(dt);
   const prevS = car.s; const prevT = G.t;
@@ -2309,7 +2391,9 @@ function tick(now) {
   car3.wheels.forEach((w, i) => { if (running) car.spin[i] -= car.w[i] * dt; w.spin.rotation.z = car.spin[i]; if (i < 2) w.steer.rotation.y = car.delta; });
   }
   car3.helm.visible = !(G.camMode === 3 && G.mode !== 'title');
-  poseDriver(car3, G.mode === 'title' ? 0 : car.delta, false, G.camMode === 3 && G.mode !== 'title'); if (G.mode !== 'title' && G.camMode === 3) updateDash(car3, v * 3.6, car.rpm);
+  const fp = G.camMode >= 2 && G.mode !== 'title';
+  poseDriver(car3, G.mode === 'title' ? 0 : car.delta, false, fp);
+  car3.torso.forEach(o => o.visible = !(G.camMode === 3 && G.mode !== 'title'));   // eye view: body parts at/behind the lens if (G.mode !== 'title' && G.camMode === 3) updateDash(car3, v * 3.6, car.rpm);
   car3.tsal.material.emissiveIntensity = ((G.mode === 'racing' || G.mode === 'title') && (performance.now() % 250) < 125) ? 4 : 0;
   // ghost
   let gpos = null;
@@ -2392,7 +2476,7 @@ setSound(false); onFS(); refreshTitle(); placeCar(T.gridK, 0); resize();
 bindSetupButtons(); if (listPads().length) padStart();
 renderPreviews(); refreshTitle();
 if (touchOnly) { show('msg', true); show('title', false); show('corner', false); }
-window.__racing = { readPad, poseDriver, G, car, T, get store() { return store; }, VP, CARS, PAD, SU, binds: () => binds, driveLap, virtualDriver, vdReset, VD, get prefs() { return prefs; }, FFB, packReport, ffbTorque, inputs, syncWheels, PEAK, TY, motorForce, physStep, placeCar, applyCar, selectCar, RL, SIM, lapSim, TRACK_ID, renderer, scene, camera, get car3() { return car3; }, rebuildCar, STATS, PREVIEW, envFor, ENV, get simMs() { return G_SIM_MS; } };
+window.__racing = { readPad, poseDriver, openSetup, G, car, T, get store() { return store; }, VP, CARS, PAD, SU, binds: () => binds, driveLap, virtualDriver, vdReset, VD, get prefs() { return prefs; }, FFB, packReport, ffbTorque, inputs, syncWheels, PEAK, TY, motorForce, physStep, placeCar, applyCar, selectCar, RL, SIM, lapSim, TRACK_ID, renderer, scene, camera, get car3() { return car3; }, rebuildCar, STATS, PREVIEW, envFor, ENV, get simMs() { return G_SIM_MS; } };
 wake();
 </script>
 </body>

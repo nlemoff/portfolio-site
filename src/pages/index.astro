@@ -8,10 +8,11 @@ import '@fontsource/pixelify-sans/700.css';
 import '../styles/house.css';
 
 const title = 'Nick Lemoff';
+const build = String(Date.now());   // stamped at build time; house.js versions the game iframe with it
 const description = "Nick Lemoff. I'm at Judgment Labs.";
 ---
 <!doctype html>
-<html lang="en">
+<html lang="en" data-build={build}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
