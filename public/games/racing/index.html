@@ -222,6 +222,7 @@ body.driving #corner:hover,body.driving #corner:focus-within{opacity:1}
     <button class="btn" id="oGhost">Ghost <b>On</b></button>
     <button class="btn" id="oCam">Camera <b>Near</b></button>
     <button class="btn" id="oAssist">Assists <b>On</b></button>
+    <button class="btn" id="oAid">Driver aid <b>Off</b></button>
     <button class="btn" id="oLine">Line <b>On</b></button>
     <button class="btn hidden" id="oPad">Wheel setup</button>
   </div>
@@ -302,7 +303,7 @@ const freshStore = () => ({ bestLap: null, bestSec: [null, null, null], ghost: n
 let store = freshStore();
 function loadStore(id) { store = freshStore(); try { const raw = localStorage.getItem(STORE_KEY(id)); if (raw) store = Object.assign(store, JSON.parse(raw)); } catch (e) {} return store; }
 function save() { try { localStorage.setItem(STORE_KEY(VP.id), JSON.stringify(store)); } catch (e) {} }
-let prefs = { assist: true, ghost: true, cam: 0, car: 'sn3', track: 'ridge', line: true, wheelRot: 900, ffbGain: 60, ffbInv: false };
+let prefs = { assist: true, aid: false, ghost: true, cam: 0, car: 'sn3', track: 'ridge', line: true, wheelRot: 900, ffbGain: 60, ffbInv: false };
 try { const p = localStorage.getItem(KEY + '-prefs'); if (p) prefs = Object.assign(prefs, JSON.parse(p)); } catch (e) {}
 function savePrefs() { try { localStorage.setItem(KEY + '-prefs', JSON.stringify(prefs)); } catch (e) {} }
 
@@ -1488,7 +1489,7 @@ function carPerf(E) {
 function driveLap(prof, E, mode = 'keys', trace, pace = 1) {   // pace: share of the line's speed the driver aims for
   const snap = structuredClone(car), N = RL.N, dt = 1 / 240, bad = [];
   const k0 = (N - Math.round(60 / T.ds)) % N; placeCar(k0, 0); car.x = RL.X[k0]; car.y = RL.Y[k0]; car.vx = prof.v[k0]; syncWheels(); vdReset();
-  let t = 0, dist = 0, prevS = car.s, tLap = 0, started = false, errMax = 0, hits = 0, kb = k0, key = 0, keyT = 0, maxBeta = 0, thrCap = 1, wide = 0;
+  let t = 0, dist = 0, prevS = car.s, tLap = 0, started = false, errMax = 0, hits = 0, kb = k0, key = 0, keyT = 0, maxBeta = 0, thrCap = 1, wide = 0, rk = 0;
   while (t < 400) {
     const v = Math.max(1, Math.hypot(car.vx, car.vy));
     let bd = 1e9; const k = car.idx; for (let q = -6; q <= 6; q++) { const j = (k + q + N) % N, d = (RL.X[j] - car.x) ** 2 + (RL.Y[j] - car.y) ** 2; if (d < bd) { bd = d; kb = j; } }
@@ -1500,7 +1501,17 @@ function driveLap(prof, E, mode = 'keys', trace, pace = 1) {   // pace: share of
     const kNeed = 2 * ly / Math.max(1, L2), aMax = envAt(E.lat, v);
     let tv = prof.v[j2]; for (let q = 1, n = Math.max(1, Math.round(v * 0.3 / T.ds)); q <= n; q++) tv = Math.min(tv, prof.v[(kb + q) % N]); tv *= pace;
     let inp;
-    if (mode === 'pad') {
+    if (mode === 'rawkeys') {
+      // a person tapping raw keys: steer key toward the angle the line needs (kinematic + a little understeer),
+      // on/off pedals with a little hysteresis
+      const dNeed = Math.atan(VP.L * kNeed) + 0.0016 * kNeed * v * v;
+      keyT -= dt;
+      if (keyT <= 0) { const want = dNeed > rk + 0.004 ? 1 : dNeed < rk - 0.004 ? -1 : 0; if (want !== key) { key = want; keyT = 0.05; } }
+      const tgt = key * DELTA_MAX, back = Math.abs(tgt) < Math.abs(rk) || tgt * rk < 0, rate = back ? 1.2 : 0.6;
+      rk += clamp(tgt - rk, -rate * dt, rate * dt);
+      const brakeK = v > tv + 0.3, thrK = !brakeK && v < tv - 0.3;
+      inp = { delta: rk, thr: thrK ? 1 : 0, brake: brakeK ? 1 : 0 };
+    } else if (mode === 'pad') {
       const brakeK = v > tv + 0.3, thrK = !brakeK && v < tv - 0.3;
       inp = virtualDriver(dt, { digital: false, steer: clamp(kNeed * v * v / (0.97 * aMax), -1, 1), thr: thrK ? 1 : 0, brake: brakeK ? 1 : 0 }, E);
     } else if (mode === 'keys') {
@@ -2026,10 +2037,12 @@ if (parentDoc) parentDoc.addEventListener('fullscreenchange', onFS);
 const CAMS = ['Near', 'Far', 'Onboard', 'Driver'];
 function cycleCam() { G.camMode = (G.camMode + 1) % CAMS.length; prefs.cam = G.camMode; savePrefs(); refreshOpts(); wake(); }
 function toggleLine() { prefs.line = !prefs.line; savePrefs(); paintLine(); refreshOpts(); if (!G.paused && G.mode !== 'title') toast('', prefs.line ? 'Racing line on' : 'Racing line off', 'n', 0.9); wake(); }
+// driver aid: keyboard and gamepad through the virtual driver (no spins from on/off keys); off = raw controls
+function toggleAid() { prefs.aid = !prefs.aid; savePrefs(); vdReset(); RAWK.d = 0; refreshOpts(); if (!G.paused && G.mode !== 'title') toast('', prefs.aid ? 'Driver aid on' : 'Driver aid off', 'n', 0.9); wake(); }
 function toggleAssist() { prefs.assist = !prefs.assist; savePrefs(); refreshSim(); paintLine(); refreshOpts(); } // assists change the car's limits, so re-measure
 function toggleGhost() { prefs.ghost = !prefs.ghost; savePrefs(); refreshOpts(); if (!G.paused && G.mode !== 'title') toast('', prefs.ghost ? 'Ghost on' : 'Ghost off', 'n', 0.9); wake(); }
 const btn = (id, fn) => $(id).addEventListener('click', e => { if (e.detail) e.currentTarget.blur(); fn(); });
-btn('goBtn', () => startRun()); btn('oAssist', toggleAssist); btn('oGhost', toggleGhost); btn('oCam', cycleCam); btn('oLine', toggleLine);
+btn('goBtn', () => startRun()); btn('oAssist', toggleAssist); btn('oAid', toggleAid); btn('oGhost', toggleGhost); btn('oCam', cycleCam); btn('oLine', toggleLine);
 btn('bMute', () => setSound(!AU.on)); btn('bFull', () => toggleFS(true));
 btn('pResume', () => setPause(false)); btn('pRestart', () => startRun()); btn('pQuit', () => toTitle());
 btn('rAgain', () => startRun()); btn('rMenu', () => toTitle());
@@ -2058,6 +2071,7 @@ function refreshTitle() { dg('tBest', fmt(store.bestLap)); buildCarPick(); build
 function refreshOpts() {
   $('oGhost').innerHTML = 'Ghost <b>' + (prefs.ghost ? 'On' : 'Off') + '</b>';
   $('oAssist').innerHTML = 'Assists <b>' + (prefs.assist ? 'On' : 'Off') + '</b>';
+  $('oAid').innerHTML = 'Driver aid <b>' + (prefs.aid ? 'On' : 'Off') + '</b>';
   $('oCam').innerHTML = 'Camera <b>' + CAMS[G.camMode] + '</b>';
   $('oLine').innerHTML = 'Line <b>' + (prefs.line ? 'On' : 'Off') + '</b>';
 }
@@ -2065,7 +2079,7 @@ function show(id, on) { $(id).classList.toggle('hidden', !on); document.body.cla
 function toTitle() { camera.near = 0.1; G.mode = 'title'; G.paused = false; show('title', true); show('pause', false); show('results', false); show('hud', false); refreshTitle(); ghost3.g.visible = false; G.attractT = 0; G.camInit = false; }
 function startRun() {
   if (touchOnly) return;
-  releaseKeys(); vdReset();
+  releaseKeys(); vdReset(); RAWK.d = 0;
   G.mode = 'countdown'; G.paused = false; show('title', false); show('pause', false); show('results', false); show('hud', true);
   placeCar(T.gridK, 0); car.energy = 0; skid.clear(); smoke.clear(); sparks.clear();
   Object.assign(G, { lap: 0, laps: [], sec: 0, s1: false, s2: false, valid: true, cutT: 0, curSec: [null, null, null], runBestSec: [null, null, null], runBest: null, last: null, cdT: 0, cdLights: 0, cdOut: 1.0 + Math.random() * 1.2, lightsT: 0, rec: null, ghostRec: null, camInit: false, finishT: 0, prevBest: store.bestLap, t: 0, toastT: 0, warnT: 0, lapRefTel: null, lapGhost: null });
@@ -2183,11 +2197,24 @@ function inputs(dt) {
   const kt = isDown('ArrowUp', 'KeyW'), kb = isDown('ArrowDown', 'KeyS');
   // a wheel drives the car directly: its angle through the car's steering ratio, pedals as they are
   if (PAD.kind === 'wheel' && !ks && !kt && !kb) return { delta: PAD.steerDeg * Math.PI / 180 / VP.rack, thr: PAD.thr, brake: PAD.brake };
-  // keyboard (or a gamepad) goes through the virtual driver; keys win while held
   const digital = !!(ks || kt || kb) || PAD.kind !== 'pad';
-  const it = digital ? { digital, steer: ks, thr: kt ? 1 : 0, brake: kb ? 1 : 0 } : { digital, steer: PAD.steer, thr: PAD.thr, brake: PAD.brake };
-  return virtualDriver(dt, it, envFor(VP.id));
+  // driving aid on: keyboard (or a gamepad) goes through the virtual driver; keys win while held
+  if (prefs.aid) {
+    const it = digital ? { digital, steer: ks, thr: kt ? 1 : 0, brake: kb ? 1 : 0 } : { digital, steer: PAD.steer, thr: PAD.thr, brake: PAD.brake };
+    return virtualDriver(dt, it, envFor(VP.id));
+  }
+  // raw (default): the inputs are the car's controls, as with a wheel. A held key turns the steering at a steady
+  // hand speed toward full lock (~34 deg/s at the road wheels, ~140 deg/s at the steering wheel) and lets it come
+  // back twice as fast; tap to hold part-lock. Throttle and brake are on or off. A stick maps straight to lock.
+  if (digital) {
+    const tgt = ks * DELTA_MAX, back = Math.abs(tgt) < Math.abs(RAWK.d) || tgt * RAWK.d < 0, rate = back ? 1.2 : 0.6;
+    RAWK.d += clamp(tgt - RAWK.d, -rate * dt, rate * dt);
+    return { delta: RAWK.d, thr: kt ? 1 : 0, brake: kb ? 1 : 0 };
+  }
+  RAWK.d = PAD.steer * DELTA_MAX;
+  return { delta: RAWK.d, thr: PAD.thr, brake: PAD.brake };
 }
+const RAWK = { d: 0 };
 function simulate(dt) {
   const inp = inputs(dt);
   const prevS = car.s; const prevT = G.t;
