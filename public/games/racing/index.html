@@ -995,7 +995,9 @@ function makeCar(ghost, look) {
 /* arms follow the hands on the turning wheel (two-bone, elbows out and down) */
 const _inv = new THREE.Matrix4(), _sh = new THREE.Vector3(), _hd = new THREE.Vector3(), _el = new THREE.Vector3(), _d = new THREE.Vector3(), _Y = new THREE.Vector3(0, 1, 0);
 function setBone(m, a, b) { _d.copy(b).sub(a); const L = _d.length(); m.position.copy(a).addScaledVector(_d, 0.5); m.scale.set(1, L, 1); m.quaternion.setFromUnitVectors(_Y, _d.normalize()); }
-function poseDriver(c3, delta, force) {
+// firstPerson: the camera sits just above the shoulders, so the upper arms and most of the forearms would run
+// past the lens as long poles; draw only the wrists into the gloves, as onboard footage shows them
+function poseDriver(c3, delta, force, firstPerson) {
   if (c3.ghost && !force) return;
   c3.sw.rotation.x = -delta * VP.rack;
   c3.body.updateMatrixWorld(true);
@@ -1004,6 +1006,8 @@ function poseDriver(c3, delta, force) {
     _sh.set(-0.1, 0.72, a.sz * 0.17);
     c3.hands[i].getWorldPosition(_hd); _hd.applyMatrix4(inv);
     _el.copy(_sh).lerp(_hd, 0.5); _el.y -= 0.07; _el.z += a.sz * 0.06;
+    a.up.visible = !firstPerson;
+    if (firstPerson) _el.set(_hd.x - 0.14, _hd.y - 0.17, _hd.z + a.sz * 0.05);   // forearm rises from below the cockpit edge
     setBone(a.up, _sh, _el); setBone(a.fo, _el, _hd);
   });
 }
@@ -2305,7 +2309,7 @@ function tick(now) {
   car3.wheels.forEach((w, i) => { if (running) car.spin[i] -= car.w[i] * dt; w.spin.rotation.z = car.spin[i]; if (i < 2) w.steer.rotation.y = car.delta; });
   }
   car3.helm.visible = !(G.camMode === 3 && G.mode !== 'title');
-  poseDriver(car3, G.mode === 'title' ? 0 : car.delta); if (G.mode !== 'title' && G.camMode === 3) updateDash(car3, v * 3.6, car.rpm);
+  poseDriver(car3, G.mode === 'title' ? 0 : car.delta, false, G.camMode === 3 && G.mode !== 'title'); if (G.mode !== 'title' && G.camMode === 3) updateDash(car3, v * 3.6, car.rpm);
   car3.tsal.material.emissiveIntensity = ((G.mode === 'racing' || G.mode === 'title') && (performance.now() % 250) < 125) ? 4 : 0;
   // ghost
   let gpos = null;
@@ -2388,7 +2392,7 @@ setSound(false); onFS(); refreshTitle(); placeCar(T.gridK, 0); resize();
 bindSetupButtons(); if (listPads().length) padStart();
 renderPreviews(); refreshTitle();
 if (touchOnly) { show('msg', true); show('title', false); show('corner', false); }
-window.__racing = { readPad, G, car, T, get store() { return store; }, VP, CARS, PAD, SU, binds: () => binds, driveLap, virtualDriver, vdReset, VD, get prefs() { return prefs; }, FFB, packReport, ffbTorque, inputs, syncWheels, PEAK, TY, motorForce, physStep, placeCar, applyCar, selectCar, RL, SIM, lapSim, TRACK_ID, renderer, scene, camera, get car3() { return car3; }, rebuildCar, STATS, PREVIEW, envFor, ENV, get simMs() { return G_SIM_MS; } };
+window.__racing = { readPad, poseDriver, G, car, T, get store() { return store; }, VP, CARS, PAD, SU, binds: () => binds, driveLap, virtualDriver, vdReset, VD, get prefs() { return prefs; }, FFB, packReport, ffbTorque, inputs, syncWheels, PEAK, TY, motorForce, physStep, placeCar, applyCar, selectCar, RL, SIM, lapSim, TRACK_ID, renderer, scene, camera, get car3() { return car3; }, rebuildCar, STATS, PREVIEW, envFor, ENV, get simMs() { return G_SIM_MS; } };
 wake();
 </script>
 </body>
