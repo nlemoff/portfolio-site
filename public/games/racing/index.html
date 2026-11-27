@@ -235,6 +235,8 @@ body.driving #corner:hover,body.driving #corner:focus-within{opacity:1}
     <div class="chk"><span>Steering</span><i class="ctr"><b id="ckSteer"></b></i></div>
     <div class="chk"><span>Throttle</span><i><b id="ckThr"></b></i></div>
     <div class="chk"><span>Brake</span><i><b id="ckBrk"></b></i></div>
+    <label class="chk"><span>Rotation</span><span><input id="suRot" type="number" min="90" max="2520" step="10" style="width:5em"> ° lock to lock <small id="suRotHint"></small></span></label>
+    <div class="chk" id="ffbRow"><span>Force</span><span><button class="btn" id="ffbBtn">Connect force feedback</button> <input id="ffbGain" type="range" min="0" max="100" step="5" style="width:6em" aria-label="Force feedback strength"> <label><input id="ffbInv" type="checkbox"> invert</label> <small id="ffbMsg"></small></span></div>
   </div>
   <div class="menu">
     <button class="btn go hidden" id="suDone">Done</button>
@@ -300,34 +302,20 @@ const freshStore = () => ({ bestLap: null, bestSec: [null, null, null], ghost: n
 let store = freshStore();
 function loadStore(id) { store = freshStore(); try { const raw = localStorage.getItem(STORE_KEY(id)); if (raw) store = Object.assign(store, JSON.parse(raw)); } catch (e) {} return store; }
 function save() { try { localStorage.setItem(STORE_KEY(VP.id), JSON.stringify(store)); } catch (e) {} }
-let prefs = { assist: true, ghost: true, cam: 0, car: 'sn3', track: 'ridge', line: true };
+let prefs = { assist: true, ghost: true, cam: 0, car: 'sn3', track: 'ridge', line: true, wheelRot: 900, ffbGain: 60, ffbInv: false };
 try { const p = localStorage.getItem(KEY + '-prefs'); if (p) prefs = Object.assign(prefs, JSON.parse(p)); } catch (e) {}
 function savePrefs() { try { localStorage.setItem(KEY + '-prefs', JSON.stringify(prefs)); } catch (e) {} }
 
 /* ---------------------------------------------------------------- cars */
-/* The three Formula Electric at Berkeley cars. Sources (FEB GitHub org, checked 2026-11):
-   - SN3: FEBSim OpenLap vehicle sheets FEB_SN3_80kW / FEB_SN3_9_12 (mass, tyre mu, 3.53 final drive, EMRAX 228
-     230 Nm curve). SN3 never ran wings (team), so its aero is the no-wing body from the same sheets
-     (CL +0.29 lift, CD 0.63, 0.812 m2); the sheets' CL -2.06 package is the one that raced on SN4.
-   - SN4: "Sims Vehicle Parameters 2025" (310 kg, 32/11 final drive, 60/40 brake split) and FEB_Firmware_SN4
-     PCU limits (MAX_TORQUE 180 Nm). Aero is the CL -2.06 / CD 1.12 package from the FEBSim sheets, which
-     the team photos show on SN4 (#271). That firmware also caps power at PEAK_CURRENT 52 A x 400 V = 20.8 kW and
-     derates further as pack voltage drops, which reads as accumulator protection, not race trim, so SN4 runs at
-     the 80 kW FSAE limit. Tyres carry over from SN3.
-   - SN5: FEBSim FEB_SN5 sheet (245 kg without driver, CL*A 4.0, CD*A 1.0, 30 kW curve, 190 mm discs) and
-     dynamics_master SN5 geometry (1550 mm wheelbase, 1230 mm track, 16 in tyres). The sheet is a design
-     study that reuses an old 30 kW curve; SN5 runs at the 80 kW FSAE limit and its driveline carries over
-     from SN4 (estimate).
-   Grip: the sheets' tyre mu (1.6-1.64) is TTC-derived and the sheets themselves warn it is optimistic, so the
-   game uses 94% of it, which puts skidpad laps near 4.9-5.0 s, mid-field FSAE.
-   Shared: 1550 mm wheelbase, 1230 mm track, 16 in tyres (r = 0.2032 m), EMRAX 228 (5500 rpm limit),
-   0.9 driveline efficiency. CoG height and yaw inertia are not documented anywhere; estimated. */
-const DRIVER = 70; // kg, added where a sheet says "no driver"
-/* Liveries, from team photos: SN3 #32 (matte black, blunt nose, no wings, bronze suspension, FEB mark and an
-   orange 57 on the nose), SN4 #271
-   (navy with gold pinstripes, blue arrows and a gold Cal bear, carbon front and rear wings), SN5 #100
-   (glossy blue nose with gold chevrons, gold side panel, "UC Berkeley", gold-topped front wing). Painted
-   onto the shared livery layout (see loft()); sponsor logos are left off. */
+/* The three Formula Electric at Berkeley cars: SN3 (2023-24, Michigan 2024 #271), SN4 (2024-25, Michigan 2025
+   #257), SN5 (2025-26, Michigan 2026 #100). Physical data comes from each car's FSAE Design Spec Sheet (see the
+   CARS table). Still estimates, because no FEB source has them: yaw inertia (FEB's own sims use 75 kg m^2),
+   wheel inertia, driveline efficiency, the LSD lock ratios at the DSS ramp angles, SN4's aero balance. */
+/* Liveries, from team photos (matched to the DSS car numbers): SN3 #271 (navy with a gold edge stripe, carbon top,
+   gold Cal bear, "Berkeley", front and rear wings), SN4 #257 (glossy navy-black nose with gold edge stripes over a
+   white pinstripe, gold front-wing flaps, black rear wing with gold endplate stripes), SN5 #100 (glossy blue nose
+   with gold chevrons, gold side panel, "UC Berkeley", gold-topped wings). Painted onto the shared livery layout
+   (see loft()); sponsor logos are left off. */
 let LIVERY_STRIPES = false; // konami code
 function rng(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
 function carbonWeave(c, W, H, a, b) { c.fillStyle = a; c.fillRect(0, 0, W, H); c.fillStyle = b; for (let y = 0; y < H; y += 8) for (let x = (y / 8 & 1) * 8; x < W; x += 16) c.fillRect(x, y, 8, 8); }
@@ -342,18 +330,7 @@ function bear(c, s, col) { // walking California bear silhouette, facing +x
 function arrowGlyph(c, x, y, s, a) { c.save(); c.translate(x, y); c.rotate(a); c.beginPath(); c.moveTo(-s, -s * 0.12); c.lineTo(s * 0.4, -s * 0.12); c.lineTo(s * 0.4, -s * 0.4); c.lineTo(s, 0); c.lineTo(s * 0.4, s * 0.4); c.lineTo(s * 0.4, s * 0.12); c.lineTo(-s, s * 0.12); c.fill(); c.restore(); }
 const plateTex = (draw) => (c, w, h, which) => { carbonWeave(c, w, h, '#151619', '#1b1c20'); draw(c, w, h, which); };
 const LOOKS = {
-  sn3: { num: '32', nose: [{ x: 1.34, hw: 0.07, y0: 0.15, y1: 0.24 }, { x: 1.3, hw: 0.17, y0: 0.1, y1: 0.33 }, { x: 1.18, hw: 0.23, y0: 0.075, y1: 0.41 }, { x: 0.92, hw: 0.26, y0: 0.065, y1: 0.47 }, { x: 0.58, hw: 0.27, y0: 0.06, y1: 0.5 }],
-    frame: 0x1c1c1f, arms: 0xb08a2e, rims: 0x161616, accent: 0xd9a21b, suit: 0x16171c, helmet: 0xf2b51d, rough: 0.72, frontWing: false, rearWing: false, wing: 1,
-    paint(c, W, H) {
-      const P = liveryPainter(c, W, H); c.fillStyle = '#2a2b30'; c.fillRect(0, 0, W, H);
-      // nose: FEB mark + wordmark, white number plate up front
-      P.top(0.8, c => { c.fillStyle = '#1f3c9e'; c.beginPath(); c.moveTo(-70, -10); c.lineTo(-10, -10); c.lineTo(-30, 10); c.lineTo(-90, 10); c.fill(); c.fillStyle = '#f2b51d'; c.beginPath(); c.moveTo(-74, 12); c.lineTo(-14, 12); c.lineTo(-34, 32); c.lineTo(-94, 32); c.fill();
-        c.fillStyle = '#eeeae0'; c.font = '600 22px "Avenir Next",Arial,sans-serif'; c.textAlign = 'left'; c.fillText('FORMULA', 0, -14); c.fillText('ELECTRIC', 0, 12); c.fillText('BERKELEY', 0, 38); });
-      P.top(0.98, c => { c.fillStyle = '#e0602a'; c.font = '800 64px "Avenir Next",Arial,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('57', 0, 0); });
-      P.top(1.24, c => numberPlate(c, '32', 110, 66));
-      P.side(0.25, 0.04, c => { c.fillStyle = '#eeeae0'; c.font = 'italic 600 46px Georgia,serif'; c.textAlign = 'center'; c.fillText('Berkeley', 0, 0); c.font = '600 13px Georgia,serif'; c.fillText('UNIVERSITY OF CALIFORNIA', 0, 20); });
-    } },
-  sn4: { num: '271', frame: 0xc9971c, arms: 0xc9971c, rims: 0x141414, accent: 0xf2b51d, suit: 0x16171c, helmet: 0x1f3c9e, rough: 0.34, frontWing: true, rearWing: true, wing: 1.12, checkerFront: true,
+  sn3: { num: '271', frame: 0xc9971c, arms: 0xc9971c, rims: 0x141414, accent: 0xf2b51d, suit: 0x16171c, helmet: 0x1f3c9e, rough: 0.34, frontWing: true, rearWing: true, wing: 1.12, checkerFront: true,
     paint(c, W, H) {
       const P = liveryPainter(c, W, H); c.fillStyle = '#1b2a63'; c.fillRect(0, 0, W, H);
       const top0 = P.V(0.565), top1 = P.V(0.435); c.save(); c.beginPath(); c.rect(0, top0, W, top1 - top0); c.clip(); carbonWeave(c, W, H, '#17181b', '#1d1e22'); c.restore(); // carbon top
@@ -368,6 +345,25 @@ const LOOKS = {
       if (which === 'front') { for (let y = 0; y < h; y += 16) for (let x = (y / 16 & 1) * 16; x < w; x += 32) { c.fillStyle = '#26272c'; c.fillRect(x, y, 16, 16); } return; }
       c.fillStyle = '#0f1013'; c.fillRect(0, 0, w, h); c.strokeStyle = '#f2b51d'; c.lineWidth = 5; c.beginPath(); c.moveTo(0, h * 0.78); c.lineTo(w, h * 0.62); c.stroke();
       c.fillStyle = '#eeeae0'; c.font = '800 72px "Avenir Next",Arial,sans-serif'; c.textAlign = 'center'; c.fillText('271', w / 2, h * 0.32); }) },
+  sn4: { num: '257', frame: 0x16171a, arms: 0x1d1e22, rims: 0x111111, accent: 0xf0a51c, suit: 0x16171c, helmet: 0xf4f2ec, rough: 0.22, frontWing: true, rearWing: true, wing: 1.12, goldFront: true,
+    paint(c, W, H) {
+      const P = liveryPainter(c, W, H); c.fillStyle = '#121933'; c.fillRect(0, 0, W, H);           // glossy navy-black
+      // gold edge stripes along the top shoulders, a white pinstripe under each, sweeping down toward the nose
+      for (const sgn of [1, -1]) {
+        const v = d => 0.5 + sgn * d;
+        c.fillStyle = '#f0a51c'; c.beginPath(); c.moveTo(P.X(-0.3), P.V(v(0.09))); c.lineTo(P.X(1.0), P.V(v(0.085))); c.lineTo(P.X(1.42), P.V(v(0.05))); c.lineTo(P.X(1.42), P.V(v(0.03))); c.lineTo(P.X(1.0), P.V(v(0.06))); c.lineTo(P.X(-0.3), P.V(v(0.065))); c.fill();
+        c.fillStyle = '#eeeae0'; c.beginPath(); c.moveTo(P.X(-0.3), P.V(v(0.15))); c.lineTo(P.X(0.9), P.V(v(0.12))); c.lineTo(P.X(1.3), P.V(v(0.2))); c.lineTo(P.X(1.3), P.V(v(0.21))); c.lineTo(P.X(0.9), P.V(v(0.13))); c.lineTo(P.X(-0.3), P.V(v(0.16))); c.fill();
+        c.fillStyle = '#f0a51c'; c.beginPath(); c.moveTo(P.X(-0.3), P.V(v(0.16))); c.lineTo(P.X(0.9), P.V(v(0.13))); c.lineTo(P.X(1.3), P.V(v(0.21))); c.lineTo(P.X(1.3), P.V(v(0.24))); c.lineTo(P.X(0.9), P.V(v(0.155))); c.lineTo(P.X(-0.3), P.V(v(0.19))); c.fill();
+      }
+      c.fillStyle = '#0b0d14'; c.fillRect(P.X(0.85), P.V(0.52), P.X(1.05) - P.X(0.85), P.V(0.48) - P.V(0.52));   // dark nose vent
+      P.side(0.45, 0.07, c => { c.fillStyle = '#eeeae0'; c.font = '600 40px Georgia,serif'; c.textAlign = 'center'; c.fillText('Berkeley', 0, 0); });
+      P.top(0.95, c => { c.fillStyle = '#f4f2ec'; c.font = '800 78px "Avenir Next",Arial,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('257', 0, 0); });
+    },
+    plate: plateTex((c, w, h, which) => {
+      c.fillStyle = '#0f1013'; c.fillRect(0, 0, w, h);
+      if (which === 'front') { c.fillStyle = '#f0a51c'; c.beginPath(); c.moveTo(0, h * 0.75); c.lineTo(w, h * 0.35); c.lineTo(w, h * 0.5); c.lineTo(0, h * 0.9); c.fill(); return; }
+      c.fillStyle = '#f0a51c'; c.beginPath(); c.moveTo(0, h); c.lineTo(w * 0.55, h * 0.35); c.lineTo(w * 0.7, h * 0.35); c.lineTo(w * 0.15, h); c.fill();
+      c.fillStyle = '#eeeae0'; c.font = '800 72px "Avenir Next",Arial,sans-serif'; c.textAlign = 'center'; c.fillText('257', w / 2, h * 0.3); }) },
   sn5: { num: '100', frame: 0x1c1c1f, arms: 0x1d1e22, rims: 0x111111, accent: 0xf2b51d, suit: 0x16171c, helmet: 0x1f3c9e, rough: 0.26, frontWing: true, rearWing: true, wing: 1.35, goldWing: true,
     paint(c, W, H) {
       const P = liveryPainter(c, W, H); carbonWeave(c, W, H, '#16171a', '#1c1d21');
@@ -398,34 +394,75 @@ const LOOKS = {
     }) }
 };
 const STRIPE_PAINT = (c, W, H) => { c.fillStyle = '#c61a1a'; c.fillRect(0, 0, W, H); c.strokeStyle = '#f2f2ee'; c.lineWidth = 26; for (let i = -10; i < 30; i++) { c.beginPath(); c.moveTo(i * 90, 0); c.lineTo(i * 90 + 260, H); c.stroke(); } };
+/* Every number below is from the team's FSAE Design Spec Sheets (DSS) unless marked otherwise:
+   SN3 "SN3 2024 FSAE Design Spec Sheet" (Michigan 2024, car #271), SN4 "SN4 Design Spec Sheet" (Michigan 2025,
+   #257), SN5 "UC_Berkeley_SN5_2026_DSS" (Michigan 2026, #100). Mass is the DSS mass without driver plus the
+   DSS's 68 kg driver; front = DSS weight distribution with driver. Aero from the DSS forces at 80 km/h
+   (rho 1.162): CL*A = downforce / q, CD*A = drag / q, aeroF = DSS "% front". Roll stiffness = DSS roll rates
+   (Nm/deg, front/rear), roll centres = DSS static heights. Brake split = master-cylinder and caliper sizes from the DSS
+   with the balance bar centred (SN3's listed 1 g pressures don't match its own master cylinders; SN5's do). Power = the pack's software discharge limit from the
+   DSS (the 80 kW figure there is the fuse rating). Tyres: SN3 Hoosier R25B 20.5x7.0-13, SN4/SN5 Hoosier R20
+   16x7.5-10. Grip (mu) is fitted to SN5's skidpad test on 2026-09-27 (best 5.05 s, peak ~1.5 g) - see TY. */
+/* Tyre: Pacejka shape coefficients from FEBSim two_track.py (generic, not TTC), with By lowered 13 -> 10 so the
+   lateral peak sits at ~8.5 deg as on Hoosier R20/R25B data (13 put it at 6.5 deg: peaky). Peak mu falls with load as FSAE
+   Hoosiers do; mu0 and sens are fitted so SN5 matches its 2026-09-27 skidpad test (see calibrate notes in TY). */
+const TY = { Bx: 16, Cx: 1.58, Ex: 0.1, By: 10, Cy: 1.45, Ey: -0.8, mu0: 1.765, Fz0: 750, sens: 0.00022, crr: 0.012, sigma: 0.25, vLow: 3 };   // vLow: slip-ratio floor (m/s); below it the explicit chassis step would ring against the tyres' stiffness   // sigma: relaxation length (m), typical FSAE slick
+const tyreMu = Fz => Math.max(0.6, TY.mu0 - TY.sens * (Fz - TY.Fz0));
+const DRIVER_KG = 68;
+const AIR = 0.5 * 1.162;   // rho/2 (kg/m^3): the density the DSS aero figures were computed at, so CL*A and CD*A round-trip exactly
+const pistonA = d => Math.PI * d * d / 4;
+// front share of brake torque with the balance bar centred: line pressure goes as 1 / master-cylinder area, torque as
+// pressure x caliper piston area (same rotor size front and rear on each car)
+const brakeSplit = (mcF, pistF, mcR, pistR) => { const f = pistonA(pistF) / pistonA(mcF), r = pistonA(pistR) / pistonA(mcR); return f / (f + r); };
+const Q80 = 0.5 * 1.162 * (80 / 3.6) ** 2;
 const CARS = {
-  sn3: { name: 'SN3', year: '2023–24', m: 335, front: 0.50, ClA: -0.29 * 0.812, CdA: 0.63 * 0.812, aeroF: 0.50, mu: 1.60 * 0.94, G: 3.53, Tmax: 230, Pmax: 80000, bias: 0.62,
+  sn3: { name: 'SN3', year: '2023–24', num: '271', m: 218.9 + DRIVER_KG, front: 0.513, L: 1.55, tw: 1.20, h: 0.279, rw: 0.267, rim: 0.165,
+    ClA: 641.83 / Q80, CdA: 441.01 / Q80, aeroF: 0.445, G: 3.54, Tmax: 230, Pmax: 35280,
+    kF: 209.9, kR: 172.4, rcF: 0.100, rcR: 0.060, kwF: 12.56, kwR: 10.32, bias: brakeSplit(0.625, 34, 1.0, 32) /* 5/8 in and 1 in masters, P34 / P32 calipers */, rack: 4.0,
     look: LOOKS.sn3 },
-  sn4: { name: 'SN4', year: '2024–25', m: 310, front: 0.50, ClA: 2.06, CdA: 1.12, aeroF: 0.50, mu: 1.60 * 0.94, G: 32 / 11, Tmax: 180, Pmax: 80000, bias: 0.60,
+  sn4: { name: 'SN4', year: '2024–25', num: '257', m: 236.988 + DRIVER_KG, front: 0.535, L: 1.592, tw: 1.227, h: 0.273, rw: 0.2032, rim: 0.127,
+    ClA: 1153 / Q80, CdA: 429 / Q80, aeroF: 0.45 /* not given on the DSS; estimate */, G: 2.91, Tmax: 220, Pmax: 35280,
+    kF: 400, kR: 350, rcF: 0.115, rcR: 0.165, kwF: 23.63, kwR: 16.26, bias: brakeSplit(0.625, 30, 0.8125, 24) /* 5/8 and 13/16 in masters, P30 / P24 */, rack: 4.0,
     look: LOOKS.sn4 },
-  sn5: { name: 'SN5', year: '2025–26', m: 245 + DRIVER, front: 0.50, ClA: 4.0, CdA: 1.0, aeroF: 0.50, mu: 1.64 * 0.94, G: 32 / 11, Tmax: 180, Pmax: 80000, bias: 0.60,
+  sn5: { name: 'SN5', year: '2025–26', num: '100', m: 248.6 + DRIVER_KG, front: 0.521, L: 1.55, tw: 1.208, h: 0.2585, rw: 0.2032, rim: 0.127,
+    ClA: 949.5 / Q80, CdA: 341.58 / Q80, aeroF: 0.3825, G: 2.91, Tmax: 220, Pmax: 52920,
+    kF: 310.8, kR: 269.8, rcF: 0.040, rcR: 0.040, kwF: 32.13, kwR: 19.49, bias: brakeSplit(0.625, 30, 0.8125, 24) /* same; matches the DSS 1 g pressures (73.5 / 44.4 bar) */, rack: 4.0,
     look: LOOKS.sn5 }
 };
 const CAR_IDS = Object.keys(CARS);
-const VP = { L: 1.55, tw: 1.23, h: 0.29, rw: 0.2032, eta: 0.9, rpmMax: 5500, B: 11.5, C: 1.6, E: 0.15, g: 9.81 };
+// shared: EMRAX 228 (6500 rpm design max on all three DSS), chain + Drexler LSD
+const VP = { L: 1.55, tw: 1.23, h: 0.29, rw: 0.2032, eta: 0.95, rpmMax: 6500, g: 9.81 };   // eta: chain + Drexler (estimate)
 const WX = [0, 0, 0, 0], WY = [0, 0, 0, 0];
 function applyCar(id) {
   const c = CARS[id] || CARS.sn3;
   Object.assign(VP, c, { id: CARS[id] ? id : 'sn3' });
   VP.a = VP.L * (1 - c.front); VP.b = VP.L * c.front;           // CoG to front / rear axle
-  VP.Iz = 0.33 * c.m;                                          // ~100 kg m^2: typical FSAE car + driver (estimate)
+  // yaw inertia: no measured value exists (FEB's max-lateral script guesses 75 kg m^2). Published FSAE cars with a
+  // driver sit around 90-120; a uniform slab of the car's footprint gives m(L^2 + tw^2)/12, and mass concentrated
+  // near the CoG pulls that down ~10%. Estimate: SN3 85, SN4 93, SN5 92 kg m^2
+  VP.Iz = 0.9 * c.m * (c.L * c.L + c.tw * c.tw) / 12;
   VP.vmax = VP.rpmMax * Math.PI / 30 / c.G * VP.rw;            // rev limit in m/s
-  // brakes are tyre-limited on all three cars (the hydraulics give > 8 kN per corner), so full pedal can reach
-  // the tyre limit at any speed, downforce included; ABS (assists) or the driver's foot keeps it there
-  // full-pedal brake torque (all four wheels): enough to lock a fully loaded front wheel at top speed
-  const fzFront = (c.m * VP.g * c.front + 0.6 * Math.max(0, c.ClA) * VP.vmax * VP.vmax * c.aeroF) / 2 + c.m * 1.8 * VP.g * VP.h / VP.L / 2;
-  VP.Tbw = 2 * c.mu * 1.1 * fzFront * VP.rw / c.bias * 1.15;
+  // lateral load transfer split: geometric (through the roll centres) + elastic (through the springs/ARBs, by roll
+  // stiffness). zAxis = roll-axis height under the CoG
+  const zAxis = c.rcF + (c.rcR - c.rcF) * VP.a / VP.L, kShare = c.kF / (c.kF + c.kR);
+  VP.lltF = (c.front * c.rcF + (c.h - zAxis) * kShare) / c.h;      // share of m*ay*h/tw carried by the front axle
+  // body attitude for the visuals, from the DSS rates: roll (rad per m/s^2) about the roll axis, pitch from the
+  // wheel rates (N/mm -> N/m) at each axle, heave from downforce
+  VP.rollGrad = c.m * (c.h - zAxis) / ((c.kF + c.kR) * 180 / Math.PI);
+  VP.pitchGrad = c.m * c.h / (2 * 1000 * (c.kwF * VP.a * VP.a + c.kwR * VP.b * VP.b));
+  VP.heave = 1 / (2 * 1000 * (c.kwF + c.kwR));
+  // brakes: every DSS sizes the hydraulics to lock the tyres with room to spare, so full pedal is tyre-limited at
+  // any speed; this is the full-pedal torque across all four wheels (enough to lock a loaded front at top speed)
+  const fzFront = (c.m * VP.g * c.front + AIR * Math.max(0, c.ClA) * VP.vmax * VP.vmax * c.aeroF) / 2 + c.m * 1.8 * VP.g * VP.h / VP.L / 2;
+  VP.Tbw = 2 * TY.mu0 * 1.3 * fzFront * VP.rw / c.bias;
+  VP.Pmech = c.Pmax * 0.92;                                    // pack power through the inverter + motor (92%, estimate)
+  VP.mu = TY.mu0;                                              // nominal peak mu at the reference load (display, lap sim)
   WX[0] = WX[1] = VP.a; WX[2] = WX[3] = -VP.b; WY[0] = WY[2] = VP.tw / 2; WY[1] = WY[3] = -VP.tw / 2;
 }
 /* EMRAX 228 through the car's torque and power caps, at the wheels */
 function motorForce(vx) {
   const w = Math.max(vx, 0) * VP.G / VP.rw;                    // motor rad/s
-  const T = Math.min(VP.Tmax, VP.Pmax / Math.max(w, 1));
+  const T = Math.min(VP.Tmax, VP.Pmech / Math.max(w, 1));
   return T * VP.G * VP.eta / VP.rw * clamp((VP.vmax - vx) / 1.5, 0, 1);
 }
 applyCar(prefs.car);
@@ -777,11 +814,10 @@ const along = (k, d, h = 0) => { k = (k + T.N) % T.N; const x = T.X[k] + T.NX[k]
 }
 
 /* ---------------------------------------------------------------- car model */
-/* Car model at real FSAE scale (metres): 1550 mm wheelbase, 1230 mm track, 16 in Hoosiers on 10 in rims.
+/* Car model at real FSAE scale (metres): each car's wheelbase, track and tyre/rim size from its DSS.
    x forward, y up, z right; origin on the ground under the CoG (mid-wheelbase). Bodywork is lofted from
    rounded cross-sections and painted with a canvas livery; the rear is open spaceframe with the
    accumulator, EMRAX motor and orange HV cabling showing, as on the real cars. */
-const RACK = 3.24; // steering wheel angle / road wheel angle, FEBSim vehicle sheets
 /* Livery texture layout, shared by every body panel: u runs along the car (x = -0.35 m at u 0 to 1.45 m at
    u 1); v runs around the cross-section, v = angle/2pi + 0.25, so the right side is centred on v 0.25, the
    top on 0.5, the left side on 0.75 and the seam sits under the floor (the texture repeats in v). */
@@ -840,10 +876,11 @@ function makeCar(ghost, look) {
   const liv = ghost ? null : canvasTex(2048, 1024, LIVERY_STRIPES ? STRIPE_PAINT : look.paint, true);
   const bodyM = gm || new THREE.MeshStandardMaterial({ map: liv, metalness: 0.3, roughness: look.rough ?? 0.35, side: THREE.DoubleSide });
   // nose cone + front bulkhead (closed) and cockpit tub (open top)
-  const nose0 = look.nose || [{ x: 1.40, hw: 0.05, y0: 0.13, y1: 0.19 }, { x: 1.28, hw: 0.12, y0: 0.10, y1: 0.27 }, { x: 1.10, hw: 0.18, y0: 0.08, y1: 0.35 }, { x: 0.86, hw: 0.23, y0: 0.07, y1: 0.43 }, { x: 0.58, hw: 0.27, y0: 0.06, y1: 0.50 }];
+  // the cowl rises to the cockpit opening so the front hoop sits inside the bodywork, as on the real cars
+  const nose0 = look.nose || [{ x: 1.40, hw: 0.05, y0: 0.13, y1: 0.19 }, { x: 1.28, hw: 0.12, y0: 0.10, y1: 0.27 }, { x: 1.10, hw: 0.18, y0: 0.08, y1: 0.36 }, { x: 0.86, hw: 0.23, y0: 0.07, y1: 0.48 }, { x: 0.62, hw: 0.27, y0: 0.06, y1: 0.59 }, { x: 0.46, hw: 0.29, y0: 0.06, y1: 0.65 }];
   const tip = nose0[0], tm = (tip.y0 + tip.y1) / 2, nose = [{ x: tip.x + 0.012, hw: tip.hw * 0.15, y0: tm - 0.004, y1: tm + 0.004 }, ...nose0]; // closed tip
   add(loft(nose, 40, false, 36), bodyM, 0, 0, 0);
-  const tub = [{ x: 0.58, hw: 0.27, y0: 0.06, y1: 0.50 }, { x: 0.30, hw: 0.31, y0: 0.06, y1: 0.47 }, { x: 0.0, hw: 0.33, y0: 0.06, y1: 0.44 }, { x: -0.22, hw: 0.32, y0: 0.06, y1: 0.42 }, { x: -0.30, hw: 0.30, y0: 0.06, y1: 0.40 }];
+  const tub = [{ x: 0.46, hw: 0.29, y0: 0.06, y1: 0.65 }, { x: 0.30, hw: 0.31, y0: 0.06, y1: 0.53 }, { x: 0.0, hw: 0.33, y0: 0.06, y1: 0.44 }, { x: -0.22, hw: 0.32, y0: 0.06, y1: 0.42 }, { x: -0.30, hw: 0.30, y0: 0.06, y1: 0.40 }];
   const tubM = bodyM;
   add(loft(tub, 40, true, 26), tubM, 0, 0, 0);
   add(new THREE.BoxGeometry(1.75, 0.012, 0.62), carbon, 0.35, 0.055, 0);                              // floor
@@ -868,12 +905,12 @@ function makeCar(ghost, look) {
   // wheels: 16 in tyre (r 0.2032, 7.5 in wide) on 10 in rim
   const wheels = [], R = VP.rw, TW = 0.19;
   const tyreG = new THREE.LatheGeometry(Array.from({ length: 13 }, (_, i) => { const a = -Math.PI / 2 + Math.PI * i / 12; return new THREE.Vector2(R - 0.07 + 0.07 * Math.cos(a) ** 0.6, TW / 2 * Math.sin(a)); }), 28); tyreG.rotateX(Math.PI / 2);
-  const rimG = new THREE.CylinderGeometry(0.127, 0.127, TW - 0.02, 20, 1, true); rimG.rotateX(Math.PI / 2);
+  const rimG = new THREE.CylinderGeometry(VP.rim, VP.rim, TW - 0.02, 20, 1, true); rimG.rotateX(Math.PI / 2);
   const hubG = new THREE.CylinderGeometry(0.03, 0.03, TW, 10); hubG.rotateX(Math.PI / 2);
   const spokeG = new THREE.BoxGeometry(0.22, 0.022, 0.03);
   const wallTex = ghost ? null : canvasTex(512, 512, (c, w, h) => { c.fillStyle = '#141414'; c.fillRect(0, 0, w, h); c.translate(w / 2, h / 2); c.fillStyle = '#e8e8e2'; c.font = '700 40px Georgia,serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; for (const a of [0, Math.PI]) { c.save(); c.rotate(a); const txt = 'HOOSIER'; for (let i = 0; i < txt.length; i++) { c.save(); c.rotate((i - 3) * 0.16); c.fillText(txt[i], 0, -205); c.restore(); } c.restore(); } });
   const wallM = gm || new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.85, transparent: false });
-  const wallG = new THREE.RingGeometry(0.128, R - 0.012, 32);
+  const wallG = new THREE.RingGeometry(VP.rim + 0.001, R - 0.012, 32);
   const WX3 = [VP.L / 2, VP.L / 2, -VP.L / 2, -VP.L / 2], WZ3 = [-VP.tw / 2, VP.tw / 2, -VP.tw / 2, VP.tw / 2];
   for (let i = 0; i < 4; i++) {
     const x = WX3[i], z = WZ3[i], sz = Math.sign(z), front = i < 2;
@@ -886,17 +923,19 @@ function makeCar(ghost, look) {
       const nut = new THREE.Mesh(hubG, accent); nut.scale.set(1, 1, 0.3); nut.position.z = sz * 0.09; spin.add(nut);
       const wall = new THREE.Mesh(wallG, wallM); wall.position.z = sz * (TW / 2 + 0.001); wall.rotation.y = sz > 0 ? 0 : Math.PI; spin.add(wall);
       // upright + brake disc stay with the steering, not the spin
-      add(new THREE.BoxGeometry(0.06, 0.2, 0.04), alu, 0, 0, -sz * 0.06, steer);
+      add(new THREE.BoxGeometry(0.06, 2 * Math.min(0.1, VP.rim * 0.72) + 0.02, 0.04), alu, 0, 0, -sz * 0.06, steer);
       const disc = add(new THREE.CylinderGeometry(front ? 0.1 : 0.09, front ? 0.1 : 0.09, 0.008, 20), alu, 0, 0, -sz * 0.03, steer); disc.rotation.x = Math.PI / 2;
       add(new THREE.BoxGeometry(0.06, 0.05, 0.03), accent, 0.06, 0.06, -sz * 0.045, steer); // caliper
     }
     wheels.push({ steer, spin });
     // double wishbones + pushrod (+ tie rod at the front), chassis side to upright
-    const ix = sz * 0.2, ox = z - sz * 0.07;
-    for (const [yc, yu] of [[0.11, 0.1], [0.3, 0.31]]) { tube([x + 0.14, yc, ix], [x, yu, ox], 0.009, armM); tube([x - 0.14, yc, ix], [x, yu, ox], 0.009, armM); }
-    tube([x, 0.12, ox - sz * 0.02], [x - 0.04, front ? 0.46 : 0.42, sz * 0.18], 0.008, armM);
-    if (front) tube([x + 0.07, 0.2, sz * 0.2], [x + 0.07, 0.21, ox], 0.007, armM);
-    else tube([x - 0.12, 0.2, sz * 0.2], [x - 0.1, 0.21, ox], 0.007, armM);
+    // ball joints on the upright, inside the rim: a little above and below the wheel centre (R), so they stay
+    // inside the wheel on SN3's 13 in rims as well as the 10 in ones
+    const ix = sz * 0.2, ox = z - sz * 0.07, bj = Math.min(0.1, VP.rim * 0.72), lo = R - bj, hi = R + bj;
+    for (const [yc, yu] of [[Math.max(0.1, lo + 0.01), lo], [hi - 0.01, hi]]) { tube([x + 0.14, yc, ix], [x, yu, ox], 0.009, armM); tube([x - 0.14, yc, ix], [x, yu, ox], 0.009, armM); }
+    tube([x, lo + 0.02, ox - sz * 0.02], [x - 0.04, front ? 0.46 : 0.42, sz * 0.18], 0.008, armM);   // pushrod / pullrod to the rocker
+    if (front) tube([x + 0.07, R, sz * 0.2], [x + 0.07, R + 0.01, ox], 0.007, armM);                   // tie rod
+    else tube([x - 0.12, R, sz * 0.2], [x - 0.1, R + 0.01, ox], 0.007, armM);                          // toe link
   }
   // wings: element stacks with endplates; W > 1 is the bigger SN5-style package
   // (inverted wings: the camber is flipped so the elements push down)
@@ -904,7 +943,7 @@ function makeCar(ghost, look) {
   const plate = (look.plate && !ghost) ? (w, h, which) => M({ map: canvasTex(256, 256, (c, W2, H2) => look.plate(c, W2, H2, which)), metalness: 0.3, roughness: 0.4, side: THREE.DoubleSide }) : () => carbon;
   if (look.frontWing) {
     const span = 1.32, fx = 1.62;
-    const fe = look.goldWing ? accent : carbon;
+    const fe = look.goldWing || look.goldFront ? accent : carbon;
     wingEl(0.3, 0.1, 0.06, span, fx, 0.05, 0.05, carbon); wingEl(0.2, 0.09, 0.07, span * 0.94, fx - 0.22, 0.11, 0.35, fe);
     if (W > 1) wingEl(0.16, 0.09, 0.07, span * 0.9, fx - 0.36, 0.19, 0.62, fe);
     const epM = plate(0.5, 0.28, 'front');
@@ -913,27 +952,26 @@ function makeCar(ghost, look) {
   }
   if (look.rearWing) {
     // FSAE box: no further than 250 mm behind the rear tyres (x >= -1.228 m) and no higher than 1.2 m
-    const span = 0.98, rx = -0.7, ry = 0.8;
+    // leading edge over the rear axle; the last flap ends at the rule limit, 250 mm behind the rear tyres
+    const span = 0.98, rx = -VP.L / 2 + 0.075, ry = 0.82;
     const re = look.goldWing ? accent : carbon;
     wingEl(0.32, 0.11, 0.07, span, rx, ry, 0.08, carbon); wingEl(0.2, 0.1, 0.08, span, rx - 0.27, ry + 0.09, 0.45, re);
     if (W > 1) wingEl(0.14, 0.1, 0.08, span, rx - 0.41, ry + 0.19, 0.8, carbon);
     const epM = plate(0.6, 0.5, 'rear'), epL = 0.6 + (W - 1) * 0.1, epH = 0.4 + (W - 1) * 0.35;
     for (const sz of [1, -1]) add(new THREE.BoxGeometry(epL, epH, 0.012), epM, rx - 0.22, ry + 0.06 + (W - 1) * 0.08, sz * span / 2);
-    for (const sz of [1, -1]) tube([-0.65, 0.47, sz * 0.17], [rx - 0.12, ry - 0.03, sz * 0.2], 0.013, carbon);
+    for (const sz of [1, -1]) { tube([-0.65, 0.47, sz * 0.17], [rx - 0.12, ry - 0.03, sz * 0.2], 0.013, carbon); tube([-0.98, 0.4, sz * 0.18], [rx - 0.2, ry - 0.03, sz * 0.2], 0.011, carbon); }
     if (W > 1) add(new THREE.BoxGeometry(0.45, 0.02, 0.9), carbon, -0.98, 0.09, 0);                    // diffuser
   }
   // driver: helmet, torso, arms; steering wheel with hands and a dash, turned by RACK x road-wheel angle
   const driver = new THREE.Group(); body.add(driver);
   const helmM = M({ color: 0xf4f2ec, metalness: 0.2, roughness: 0.25 });
   const helm = add(new THREE.SphereGeometry(0.125, 18, 14), helmM, -0.16, 0.86, 0, driver);
-  if (!ghost) { add(new THREE.SphereGeometry(0.127, 18, 14, -0.6, 1.2, 1.2, 0.5), M({ color: 0x111111, metalness: 0.9, roughness: 0.05 }), -0.16, 0.86, 0, driver).rotation.y = Math.PI / 2; add(new THREE.TorusGeometry(0.126, 0.012, 6, 24), M({ color: look.helmet, roughness: 0.4 }), -0.16, 0.86, 0, driver).rotation.y = Math.PI / 2; }
+  if (!ghost) { add(new THREE.SphereGeometry(0.128, 24, 12, -1.0, 2.0, 1.2, 0.42), M({ color: 0x0d0f14, metalness: 0.9, roughness: 0.08 }), -0.16, 0.86, 0, driver).rotation.y = Math.PI / 2; add(new THREE.TorusGeometry(0.126, 0.012, 6, 24), M({ color: look.helmet, roughness: 0.4 }), -0.16, 0.86, 0, driver).rotation.y = Math.PI / 2; }
   const torso = add(new THREE.CylinderGeometry(0.15, 0.12, 0.38, 12), suitM, -0.16, 0.56, 0, driver); torso.rotation.z = 0.42; torso.scale.set(0.8, 1, 1.2);
   add(new THREE.CapsuleGeometry(0.055, 0.28, 4, 10), suitM, -0.1, 0.71, 0, driver).rotation.x = Math.PI / 2;               // shoulders
   add(new THREE.CylinderGeometry(0.05, 0.055, 0.08, 10), suitM, -0.15, 0.77, 0, driver);                               // neck / HANS
   if (!ghost) for (const sz of [1, -1]) tube([-0.2, 0.76, sz * 0.09], [-0.02, 0.5, sz * 0.05], 0.012, M({ color: 0x1f3c9e, roughness: 0.8 }), driver); // harness
-  // front hoop (above the steering wheel, as the rules require) and the steering column
-  const fh = []; for (let i = 0; i <= 8; i++) { const a = Math.PI * i / 8; fh.push([0.47, 0.44 + Math.sin(a) * 0.29, Math.cos(a) * 0.24]); }
-  for (let i = 0; i < fh.length - 1; i++) tube(fh[i], fh[i + 1], 0.012, tubeM);
+  // the front hoop is inside the dash cowl on all three cars, so only the steering column is modelled
   tube([0.34, 0.6, 0], [0.78, 0.42, 0], 0.012, alu);
   const swheel = new THREE.Group(); swheel.position.set(0.34, 0.6, 0); swheel.rotation.z = 0.35; body.add(swheel);
   const sw = new THREE.Group(); swheel.add(sw);
@@ -958,7 +996,7 @@ const _inv = new THREE.Matrix4(), _sh = new THREE.Vector3(), _hd = new THREE.Vec
 function setBone(m, a, b) { _d.copy(b).sub(a); const L = _d.length(); m.position.copy(a).addScaledVector(_d, 0.5); m.scale.set(1, L, 1); m.quaternion.setFromUnitVectors(_Y, _d.normalize()); }
 function poseDriver(c3, delta, force) {
   if (c3.ghost && !force) return;
-  c3.sw.rotation.x = -delta * RACK;
+  c3.sw.rotation.x = -delta * VP.rack;
   c3.body.updateMatrixWorld(true);
   const inv = _inv.copy(c3.driver.matrixWorld).invert();
   c3.arms.forEach((a, i) => {
@@ -991,7 +1029,7 @@ function selectCar(id) {
   if (!CARS[id]) return;
   applyCar(id); prefs.car = id; savePrefs(); loadRecords();
   rebuildCar();
-  lapSim(RL, envFor(VP.id), CAPF[VP.id]); paintLine();
+  lapSim(RL, envFor(VP.id)); paintLine();
   refreshTitle(); wake();
 }
 function stripeLivery(on) { LIVERY_STRIPES = on; rebuildCar(); }
@@ -1043,8 +1081,7 @@ const smoke = makeParticles(260, false), sparks = makeParticles(120, true);
 const C_SMOKE = new THREE.Color(0.86, 0.85, 0.83), C_DUST = new THREE.Color(0.55, 0.45, 0.3), C_SPARK = new THREE.Color(1.0, 0.6, 0.18);
 
 /* ---------------------------------------------------------------- vehicle dynamics (two-track, 4 tyres) */
-const car = { w: [0, 0, 0, 0], Fl: [0, 0, 0, 0], Ft: [0, 0, 0, 0], util: [0, 0, 0, 0], kap: [0, 0, 0, 0], alp: [0, 0, 0, 0], abs: [1, 1, 1, 1], tc: 1, rpm: 0, x: 0, y: 0, psi: 0, vx: 0, vy: 0, r: 0, delta: 0, thr: 0, brk: 0, ax: 0, ay: 0, idx: 0, s: 0, d: 0, nx: 0, ny: 1, rev: false, revT: 0, spin: [0, 0, 0, 0], slip: [0, 0, 0, 0], off: [0, 0, 0, 0], kerb: [0, 0, 0, 0], Fz: [0, 0, 0, 0], power: 0, wp: [[0, 0], [0, 0], [0, 0], [0, 0]], lastSkid: [null, null, null, null], energy: 0, impact: 0, offAll: 0 };
-function alatMax(v) { return VP.mu * VP.g * (1 + 0.6 * VP.ClA * v * v / (VP.m * VP.g)) * 0.92; }
+const car = { alr: [0, 0, 0, 0], dvx: 0, w: [0, 0, 0, 0], Fl: [0, 0, 0, 0], Ft: [0, 0, 0, 0], util: [0, 0, 0, 0], kap: [0, 0, 0, 0], alp: [0, 0, 0, 0], abs: [1, 1, 1, 1], tc: 1, rpm: 0, x: 0, y: 0, psi: 0, vx: 0, vy: 0, r: 0, delta: 0, thr: 0, brk: 0, ax: 0, ay: 0, idx: 0, s: 0, d: 0, nx: 0, ny: 1, rev: false, revT: 0, spin: [0, 0, 0, 0], slip: [0, 0, 0, 0], off: [0, 0, 0, 0], kerb: [0, 0, 0, 0], Fz: [0, 0, 0, 0], power: 0, wp: [[0, 0], [0, 0], [0, 0], [0, 0]], lastSkid: [null, null, null, null], energy: 0, impact: 0, offAll: 0 };
 function placeCar(k, back) {
   const i = ((k % T.N) + T.N) % T.N;
   Object.assign(car, { x: T.X[i] - T.TX[i] * (back || 0), y: T.Y[i] - T.TY[i] * (back || 0), psi: Math.atan2(T.TY[i], T.TX[i]), vx: 0, vy: 0, r: 0, delta: 0, thr: 0, brk: 0, ax: 0, ay: 0, rev: false, revT: 0, lastSkid: [null, null, null, null], idx: i }); syncWheels();
@@ -1052,18 +1089,18 @@ function placeCar(k, back) {
 }
 /* ---- Vehicle model: two-track with wheel dynamics, after FEBSim's two_track.py ----
    - Tyres: Pacejka "magic formula" with combined slip (the generic coefficients and weighting functions in
-     FEBSim two_track.py: Bx 16 Cx 1.58 Ex 0.1, By 13 Cy 1.45 Ey -0.8), peak mu falling with load as in OpenLAP
-     (vehicle sheets: mu, 83.75 kg reference load, 0.0001 /N sensitivity). TTC-fitted coefficients are not used.
+     FEBSim two_track.py: Bx 16 Cx 1.58 Ex 0.1, By 13 Cy 1.45 Ey -0.8), peak mu falling with load (TY.mu0/sens,
+     fitted to SN5's 2026-09-27 skidpad test). TTC-fitted coefficients are not used (TTC data can't be published).
    - Each wheel spins on its own: slip ratio comes from wheel speed vs road speed, so lock-ups and wheelspin come
      out of the tyre curves. Wheel speeds are integrated semi-implicitly (the tyre's slip stiffness goes into
      the effective inertia) so the stiff wheel dynamics stay stable at 240 Hz.
-   - Rear axle through a Drexler LSD (FEBSim powertrain.py, SN3: 45/60 deg ramps = 51% power / 29% coast lock,
+   - Rear axle through a Drexler LSD (40/50 deg ramps on every DSS; lock ratios scaled from FEBSim powertrain.py,
      10 Nm preload). Motor torque from motor speed (which rises with wheelspin), EMRAX rotor inertia reflected.
-   - Brakes are torques at each wheel with the car's front/rear split. Load transfer with a 58% front roll
-     stiffness split (typical FSAE; FEBSim uses a 50% placeholder) and ~60 ms of suspension lag; downforce at the aero balance; drag; rolling resistance; slope.
-   - Assists are what real systems do: slip-ratio traction control on the motor and per-wheel ABS. No
-     stability control: carry too much speed and the car will push or spin depending on what you do. */
-const TY = { Bx: 16, Cx: 1.58, Ex: 0.1, By: 13, Cy: 1.45, Ey: -0.8, Fz0: 83.75 * 9.81, sens: 0.0001, crr: 0.012 };
+   - Brakes are torques at each wheel with the car's DSS front/rear split. Lateral load transfer split by the DSS
+     roll centres and roll rates (VP.lltF), ~60 ms of suspension lag; downforce at the aero balance; drag;
+     rolling resistance; slope.
+   - Assists are what real systems do: slip-ratio traction control on the motor and per-wheel ABS (the real cars
+     have neither). No stability control: carry too much speed and the car will push or spin. */
 const pacX = (k, D) => D * Math.sin(TY.Cx * Math.atan((1 - TY.Ex) * TY.Bx * k + TY.Ex * Math.atan(TY.Bx * k)));
 const pacY = (a, D) => D * Math.sin(TY.Cy * Math.atan((1 - TY.Ey) * TY.By * a + TY.Ey * Math.atan(TY.By * a)));
 // slip at the peak of each curve (for the slip display, TC/ABS targets and the driver's limits)
@@ -1071,47 +1108,109 @@ const PEAK = (() => { let ka = 0, kb = 0, aa = 0, ab = 0; for (let x = 0.001; x 
 const DELTA_MAX = 38 * Math.PI / 180;                     // road-wheel lock (FEBSim vehicle.py)
 // front share of lateral load transfer. FEBSim's k_roll is a 0.5 placeholder and FEB's spring/ARB rates aren't
 // in the repos; RWD FSAE cars typically run 55-60% front so the fronts saturate first (stable at the limit). Estimate.
-const LLTD = 0.58;
 // rear toe-in (each wheel's front turned toward the centreline): standard FSAE practice for stability under power.
 // FEB's alignment sheets aren't in the repos; 0.3 deg is a typical value (estimate)
 const REAR_TOE = 0.3 * Math.PI / 180;
 const J_WHEEL = 0.18, J_MOTOR = 0.0383;                   // kg m^2: wheel+tyre+hub+disc (estimate), EMRAX 228 rotor
-const DIFF = { pre: 10, lockOn: 0.51, lockOff: 0.29 };
-function syncWheels() { const w = car.vx / VP.rw; for (let i = 0; i < 4; i++) car.w[i] = w; car.tc = 1; car.abs.fill(1); }
-// steering limit for keyboard/stick (binary or twitchy inputs): enough lock to reach the front tyres' peak slip
-// at the grip the car has, plus any body slip so a slide can always be caught. A wheel gets the full rack.
-// (the extra is only for opposite lock: steering further into a slide just spins the car)
-// A full key press asks for ~the cornering limit at this speed (kinematic angle for 92% of the grip, plus a little
-// slip), not a fixed lock, so tapping keys gives fine control instead of a jolt to peak slip.
-function steerLimit(v, beta, dir) { return Math.min(DELTA_MAX, Math.atan(VP.L * 0.92 * alatMax(Math.max(v, 1)) / Math.max(v * v, 1)) + PEAK.a * (prefs.assist ? 0.55 : 0.8) + (v > 3 && dir * beta > 0 ? Math.abs(beta) : 0)); }
-// keys/stick: the angle builds over ~0.22 s at any speed (returns faster); a wheel follows the hands
-function steerRateFor(v, back) { const full = steerLimit(v, 0, 0); return back ? Math.max(1.2, full / 0.12) : clamp(full / 0.22, 0.4, 3.2); }
+const DIFF = { pre: 10, lockOn: 0.58, lockOff: 0.43 };   // Drexler 40/50 deg ramps (all three DSS), interpolated from FEBSim powertrain.py 45/60 = 51/29 %
+function syncWheels() { const w = car.vx / VP.rw; for (let i = 0; i < 4; i++) { car.w[i] = w; car.alr[i] = 0; } car.dvx = 0; car.tc = 1; car.abs.fill(1); }
+/* ---- Virtual driver (keyboard and gamepad) ----
+   A keyboard has on/off keys and a stick has a few cm of travel; a real driver's hands and feet are analog and
+   feel the tyres. So for those devices the inputs are intents, and this layer does what a driver's limbs do,
+   with the car's physics left untouched:
+   - steering: the intent s (-1..1) asks for that share of the car's cornering grip at this speed. The hands
+     steer to the matching yaw rate (kinematic angle + yaw-rate feedback), never push the front tyres past
+     their peak slip angle, and catch a slide by reflex: the front slip limit is measured from where the
+     front axle is actually travelling, so when the rear steps out the wheel follows it (opposite lock).
+   - pedals: the intent ramps in like a foot. The brake only takes the grip the tyres have left after the
+     cornering they're doing (trail braking), and without ABS the foot stays at the threshold pedal for that
+     speed (measured from the car) instead of locking the wheels. Throttle out of a corner is fed in as
+     the rear grip frees up.
+   A wheel and pedals bypass all of this: the wheel angle goes through the steering ratio, pedals are raw. */
+const VD = { s: 0, thr: 0, brk: 0 };
+function vdReset() { VD.s = 0; VD.thr = 0; VD.brk = 0; VD.iy = 0; }
+function virtualDriver(dt, it, E) {
+  const c = car, v = Math.max(0.5, Math.hypot(c.vx, c.vy)), vx = Math.max(0.5, Math.abs(c.vx));
+  // keys ramp (below); a stick is followed with a short lag
+  if (it.digital) {
+    // toward lock: ~0.22 s; letting go: ~0.18 s (taps can hold part-lock); crossing centre for the other direction:
+    // fast, as hands snap the wheel across in an S-bend
+    const tgt = clamp(it.steer, -1, 1), cross = tgt * VD.s < 0, back = Math.abs(tgt) < Math.abs(VD.s);
+    const rate = cross ? 1 / 0.08 : back ? 1 / 0.18 : 1 / 0.22;
+    VD.s += clamp(tgt - VD.s, -rate * dt, rate * dt);
+  }
+  else VD.s += (clamp(it.steer, -1, 1) - VD.s) * Math.min(1, dt / 0.05);
+  const aMax = Math.max(2, envAt(E.lat, v)), kmax = Math.tan(DELTA_MAX) / VP.L;
+  // target path curvature from the share of grip asked for (capped by the steering lock at low speed)
+  const kt = clamp(VD.s * 0.97 * aMax / (v * v), -kmax, kmax), rt = kt * v;
+  // hands: kinematic angle + yaw-rate correction (a stiffer correction at low speed, where the car responds slowly)
+  // plus the lock the car's understeer needs (~0.9 deg/g measured on all three), and what a driver does when the car
+  // still turns less than wanted: keep winding on (a slow integral, which bleeds away when the hands straighten)
+  VD.iy = clamp((VD.iy || 0) * Math.exp(-dt / (Math.abs(VD.s) < 0.05 ? 0.15 : 1.5)) + dt * 0.8 * (rt - c.r), -0.08, 0.08);
+  let d = Math.atan(VP.L * kt) + 0.0016 * kt * v * v + (0.1 + 0.8 / v) * (rt - c.r) + VD.iy;
+  // front tyres' actual direction of travel; never steer them more than ~peak slip past it (this is also what
+  // makes the hands catch a slide)
+  const front = Math.atan2(c.vy + VP.a * c.r, vx), aLim = PEAK.a * 1.05;
+  d = clamp(d, front - aLim, front + aLim);
+  // feet
+  const keyRamp = (cur, on, up, down) => cur + clamp((on ? 1 : 0) * (typeof on === 'number' ? on : 1) - cur, -dt / down, dt / up);
+  if (it.digital) { VD.thr = keyRamp(VD.thr, it.thr, 0.25, 0.06); VD.brk = keyRamp(VD.brk, it.brake, 0.12, 0.06); }
+  else { VD.thr = it.thr; VD.brk = it.brake; }
+  // grip left after cornering: lateral use from the car's actual lateral acceleration vs its limit
+  const latUse = clamp(Math.abs(c.ay) / aMax, 0, 1), left = Math.sqrt(Math.max(0, 1 - latUse * latUse));
+  let brake = VD.brk, thr = VD.thr;
+  if (brake > 0) {
+    // the pedal that just reaches the tyres' limit at this speed: measured from the car without ABS; with ABS, the
+    // pedal that asks for the car's best stop (the full pedal is sized to lock the wheels at top speed, several times
+    // what the tyres can take at low speed, and an ABS pinning every tyre at its slip limit leaves no side grip)
+    const thresh = prefs.assist ? clamp((envAt(E.brk, v) * VP.m - AIR * VP.CdA * v * v) * VP.rw / Math.max(1, VP.Tbw) * 1.1, 0.05, 1) : envAt(E.brkL, v);
+    // braking that would take the car past its combined limit is held back; a little always gets through
+    brake = Math.min(brake * thresh, thresh * Math.max(0.12, left * 1.05));
+    // rear starting to rotate under braking: ease off, as a driver does
+    // (the more the rear is sliding past the front, the more the foot comes off; fully off once it's well past)
+    const rearSlip = Math.max(Math.abs(c.alp[2]), Math.abs(c.alp[3])), frontSlip = Math.max(Math.abs(c.alp[0]), Math.abs(c.alp[1]));
+    if (rearSlip > frontSlip && rearSlip > PEAK.a * 0.5) brake *= clamp(1 - (rearSlip - PEAK.a * 0.5) / (PEAK.a * 0.3), 0, 1);
+    thr = 0;
+  }
+  // feed power in with the grip that frees up as the steering unwinds (with or without TC: TC stops wheelspin,
+  // it doesn't stop the car running wide on power)
+  // (the cap is on drive force against the rears' remaining grip, not on pedal travel: near top speed full
+  // throttle is far less force than the tyres can take)
+  if (thr > 0) { const rearGrip = tyreMu((c.Fz[2] + c.Fz[3]) / 2) * (c.Fz[2] + c.Fz[3]); thr = Math.min(thr, Math.max(prefs.assist ? 0.35 : 0.25, left * 1.15 * rearGrip / Math.max(1, motorForce(c.vx)))); }
+  // pushing wide on power: the fronts near their peak slip and the car turning clearly less than the hands ask.
+  // (Some yaw lag is normal - the tyres build force over their relaxation length and the car understeers a
+  // little - so this only counts once the fronts are really working.)
+  const deficit = Math.abs(rt) > 0.05 && c.r * rt > -0.01 ? clamp((Math.abs(rt) - Math.abs(c.r)) / Math.abs(rt), 0, 1) : 0;
+  const frontA = Math.abs(front - c.delta);
+  if (thr > 0 && deficit > 0.12 && frontA > PEAK.a * 0.75) thr *= clamp(1 - (deficit - 0.12) * 3, 0.3, 1);
+  // asking for all the grip and the car is at its cornering limit: no more power until it turns
+  if (thr > 0 && Math.abs(VD.s) > 0.95 && latUse > 0.9 && deficit > 0.05) thr *= clamp((1 - latUse) * 5, 0.2, 1);
+  // rear sliding (its slip angle past ~60% of peak, more than the front's): lift, as a driver's foot does
+  const rearA = Math.abs(Math.atan2(c.vy - VP.b * c.r, vx));
+  if (thr > 0 && rearA > PEAK.a * 0.6 && rearA > frontA) thr *= clamp(1 - (rearA - PEAK.a * 0.6) / (PEAK.a * 0.5), 0, 1);
+  return { delta: d, thr, brake };
+}
 // free = test-pad mode for measuring the car (no track: no kerbs, grass, walls or slope).
-// inp: { thr, brake, steer (-1..1 through the device's steering limit), wheel?, delta? (direct road-wheel angle) }
+// inp: { thr, brake, delta (road-wheel angle, rad) } - actuator demands, from the virtual driver or a wheel
 function physStep(dt, inp, free) {
-  const c = car, v = Math.hypot(c.vx, c.vy), beta = Math.atan2(c.vy, Math.max(Math.abs(c.vx), 0.5));
-  // driver inputs -> actuators
-  const dlim = inp.wheel ? DELTA_MAX : steerLimit(v, beta, Math.sign(inp.steer || 0));
-  const tgt = inp.delta !== undefined ? inp.delta : clamp(inp.steer, -1, 1) * dlim;
-  const back = Math.abs(tgt) < Math.abs(c.delta) || Math.sign(tgt) !== Math.sign(c.delta);
-  const rate = inp.wheel || inp.delta !== undefined ? 12 : steerRateFor(v, back);
-  c.delta += clamp(tgt - c.delta, -rate * dt, rate * dt);
+  const c = car, v = Math.hypot(c.vx, c.vy);
+  // the steering follows the demand at hand speed (~12 rad/s at the road wheels = ~2700 deg/s at the wheel)
+  c.delta += clamp(clamp(inp.delta || 0, -DELTA_MAX, DELTA_MAX) - c.delta, -12 * dt, 12 * dt);
   if (inp.brake && !inp.thr && c.vx < 0.6) { c.revT += dt; if (c.revT > 0.3) c.rev = true; } else c.revT = 0;
   if (c.rev && (inp.thr || c.vx > 1)) c.rev = false;
   const thrIn = c.rev ? 0 : inp.thr, brkIn = c.rev ? 0 : inp.brake;
   c.thr += clamp(thrIn - c.thr, -dt / 0.05, dt / 0.08); c.brk += clamp(brkIn - c.brk, -dt / 0.05, dt / 0.07);
   // normal loads: static + aero + longitudinal and lateral transfer (accelerations lagged like the suspension)
-  const q = 0.6 * v * v, down = q * VP.ClA, drag = q * VP.CdA, Wt = VP.m * VP.g;
+  const q = AIR * v * v, down = q * VP.ClA, drag = q * VP.CdA, Wt = VP.m * VP.g;
   const fzf = (Wt * VP.b / VP.L + down * VP.aeroF) / 2, fzr = (Wt * VP.a / VP.L + down * (1 - VP.aeroF)) / 2;
   const dL = VP.m * c.ax * VP.h / VP.L / 2, dLat = VP.m * c.ay * VP.h / VP.tw, Fz = c.Fz;
-  Fz[0] = fzf - dL - dLat * LLTD; Fz[1] = fzf - dL + dLat * LLTD; Fz[2] = fzr + dL - dLat * (1 - LLTD); Fz[3] = fzr + dL + dLat * (1 - LLTD);
+  Fz[0] = fzf - dL - dLat * VP.lltF; Fz[1] = fzf - dL + dLat * VP.lltF; Fz[2] = fzr + dL - dLat * (1 - VP.lltF); Fz[3] = fzr + dL + dLat * (1 - VP.lltF);
   for (let i = 0; i < 4; i++) Fz[i] = Math.max(20, Fz[i]);
   // motor -> LSD -> rear wheels. Motor speed follows the rear wheels, so wheelspin hits the power limit
   const wm = Math.max(0, (c.w[2] + c.w[3]) / 2 * VP.G);
   c.rpm = wm * 30 / Math.PI;
-  const Tm = Math.min(VP.Tmax, VP.Pmax / Math.max(wm, 1)) * clamp((VP.rpmMax - c.rpm) / 250, 0, 1);
+  const Tm = Math.min(VP.Tmax, VP.Pmech / Math.max(wm, 1)) * clamp((VP.rpmMax - c.rpm) / 250, 0, 1);
   let Ta = c.rev ? -0.35 * VP.Tmax * VP.G * (inp.thr || inp.brake ? 1 : 0) * (c.vx > -4 ? 1 : 0) : c.thr * Tm * c.tc * VP.G * VP.eta;
-  const Jr = J_WHEEL + J_MOTOR * VP.G * VP.G / 2;
   // brake torque at full pedal: enough to lock any wheel at top speed (the hydraulics have plenty)
   const Tb = c.brk * VP.Tbw;
   let Fx = 0, Fy = 0, Mz = 0, tcOver = 0;
@@ -1119,14 +1218,19 @@ function physStep(dt, inp, free) {
   for (let i = 0; i < 4; i++) {
     const front = i < 2, sd = front ? c.delta : (i === 2 ? -REAR_TOE : REAR_TOE), cs = Math.cos(sd), sn = Math.sin(sd);
     const vxw = c.vx - c.r * WY[i], vyw = c.vy + c.r * WX[i];
-    const vl = vxw * cs + vyw * sn, vt = -vxw * sn + vyw * cs, den = Math.max(Math.abs(vl), 1.5);
-    const surf = c.off[i] ? 0.62 : c.kerb[i] ? 0.94 : 1;
-    const D = (VP.mu - TY.sens * (Fz[i] - TY.Fz0)) * Fz[i] * surf;
-    const k = (c.w[i] * VP.rw - vl) / den, a = Math.atan(vt / den);
+    const vl = vxw * cs + vyw * sn, vt = -vxw * sn + vyw * cs, den = Math.max(Math.abs(vl), TY.vLow);
+    const surf = c.off[i] ? 0.4 : c.kerb[i] ? 0.94 : 1;                     // slicks on grass: ~40% of tarmac grip
+    const D = tyreMu(Fz[i]) * Fz[i] * surf;
+    // lateral slip builds over the tyre's relaxation length as it rolls (integrated implicitly, so it's stable at
+    // any speed, and at a standstill the tyre acts as a damped spring instead of a slip that flips each step)
+    c.alr[i] = (c.alr[i] + dt * vt / TY.sigma) / (1 + dt * Math.abs(vl) / TY.sigma);
+    const k = (c.w[i] * VP.rw - vl) / den, a = Math.atan(c.alr[i]);
     // combined slip (FEBSim two_track.py weighting functions)
     const Bxa = 13 * Math.cos(Math.atan(9.7 * k)), Exa = -Fz[i] / 10000, Gxa = Math.cos(Math.atan(Bxa * a - Exa * (Bxa * a - Math.atan(Bxa * a))));
     const Bys = 10.62 * Math.cos(Math.atan(7.8 * a)), Gyk = Math.cos(Math.atan(Bys * k - 0.3 * (Bys * k - Math.atan(Bys * k))));
-    const fl = pacX(k, D) * Gxa, ft = -pacY(a, D) * Gyk;
+    let fl = pacX(k, D) * Gxa, ft = -pacY(a, D) * Gyk;
+    // those weighting functions can exceed the friction circle by ~10% in combined slip; cap at the tyre's grip
+    const Fc = Math.hypot(fl, ft); if (Fc > D) { fl *= D / Fc; ft *= D / Fc; }
     Fl[i] = fl; kap[i] = k; c.alp[i] = a; c.util[i] = Math.hypot(fl, ft) / Math.max(1, D); c.Ft[i] = ft;   // grip in use (diagnostics, display)
     c.slip[i] = Math.max(Math.abs(a) / PEAK.a, Math.abs(k) / PEAK.k);
     // TC allows less wheelspin the harder the rear is cornering (a tyre at peak drive slip has little side grip left)
@@ -1134,50 +1238,51 @@ function physStep(dt, inp, free) {
     const fxb = fl * cs - ft * sn, fyb = fl * sn + ft * cs;
     Fx += fxb; Fy += fyb; Mz += WX[i] * fyb - WY[i] * fxb;
   }
-  // wheel speeds, semi-implicit: J_eff = J + dt * R^2 * (slip stiffness / den)
-  const dfr = c.vx >= 0 ? 1 : -1;
+  // wheel speeds, semi-implicit: each tyre's slip stiffness S = dt R^2 C/den goes into the effective inertia.
+  // The road under the wheel also accelerates with the car, so a wheel holding a steady slip only needs torque for
+  // its real inertia: the S * dvx/R term (without it the tyre stiffness acts like ~60 kg of extra mass per wheel).
+  const S = [0, 0, 0, 0], tau = [0, 0, 0, 0], Tbi = [0, 0, 0, 0], dvr = (c.ax + c.r * c.vy) * dt / VP.rw;   // the car's (smoothed) acceleration this step; last step's raw dvx feeds back and chatters at low speed
   for (let i = 0; i < 4; i++) {
-    const front = i < 2, J = front ? J_WHEEL : Jr, D = Math.max(50, (VP.mu - TY.sens * (c.Fz[i] - TY.Fz0)) * c.Fz[i]);
-    const vl = Math.abs(c.vx) + 0.5, Ceff = TY.Bx * TY.Cx * D / Math.max(vl, 1.5), Je = J + dt * VP.rw * VP.rw * Ceff;
-    let Td = front ? 0 : Ta / 2;
-    let Tbi = (Tb * (front ? VP.bias : 1 - VP.bias) / 2) * c.abs[i];
-    // ABS gives cornering priority (as ABS with stability control, or a good driver's foot, does): a wheel brakes only
-    // with the grip left after the cornering force it's already making, so a held brake becomes correct trail braking
-    if (prefs.assist && Tbi > 0) { const ut = Math.min(1, Math.abs(c.Ft[i]) / D), left = D * Math.sqrt(Math.max(0, 1 - ut * ut)) * (front ? 0.97 : 0.85); Tbi = Math.min(Tbi, left * VP.rw); }
-    Tbi += TY.crr * c.Fz[i] * VP.rw * (c.off[i] ? 6 : 1);
-    if (!front) { const other = i === 2 ? 3 : 2, cap = DIFF.pre + (Ta >= 0 ? DIFF.lockOn : DIFF.lockOff) * Math.abs(Ta); Td += clamp((c.w[other] - c.w[i]) * Je / (2 * dt), -cap, cap); }
-    let w = c.w[i] + dt * (Td - VP.rw * Fl[i]) / Je;
-    // brake + rolling friction oppose rotation and can stop the wheel, never reverse it
-    const dw = dt * Tbi / Je;
-    if (w > 0) w = Math.max(0, w - dw); else if (w < 0) w = Math.min(0, w + dw);
-    c.w[i] = w;
+    const D = Math.max(50, tyreMu(c.Fz[i]) * c.Fz[i]), vl = Math.abs(c.vx) + 0.5;
+    S[i] = dt * VP.rw * VP.rw * TY.Bx * TY.Cx * D / Math.max(vl, TY.vLow); tau[i] = -VP.rw * Fl[i];
+    Tbi[i] = Tb * (i < 2 ? VP.bias : 1 - VP.bias) / 2 * c.abs[i] + TY.crr * c.Fz[i] * VP.rw * (c.off[i] ? 6 : 1);
+  }
+  const brakeW = (w, dw) => w > 0 ? Math.max(0, w - dw) : w < 0 ? Math.min(0, w + dw) : 0;   // brakes stop a wheel, never reverse it
+  for (let i = 0; i < 2; i++) { const A = J_WHEEL + S[i]; c.w[i] = brakeW(c.w[i] + (dt * tau[i] + S[i] * dvr) / A, dt * Tbi[i] / A); }
+  // rear pair through the LSD: the motor rotor (reflected through the gearing) resists only the pair's average speed;
+  // the diff passes one locking torque Tl from the faster wheel to the slower, up to half the lock limit
+  // (lock % = torque difference between the wheels / input torque)
+  {
+    const Jm = J_MOTOR * VP.G * VP.G / 4, A2 = J_WHEEL + S[2] + Jm, A3 = J_WHEEL + S[3] + Jm, det = A2 * A3 - Jm * Jm;
+    const b2 = dt * (Ta / 2 + tau[2]) + S[2] * dvr, b3 = dt * (Ta / 2 + tau[3]) + S[3] * dvr;
+    const f0 = (A3 * b2 - Jm * b3 - A2 * b3 + Jm * b2) / det, g = dt * (A2 + A3 + 2 * Jm) / det;
+    const cap = (DIFF.pre + (Ta >= 0 ? DIFF.lockOn : DIFF.lockOff) * Math.abs(Ta)) / 2;
+    const Tl = clamp((-(c.w[2] - c.w[3]) - f0) / g, -cap, cap);
+    const d2 = (A3 * (b2 + dt * Tl) - Jm * (b3 - dt * Tl)) / det, d3 = (A2 * (b3 - dt * Tl) - Jm * (b2 + dt * Tl)) / det;
+    c.w[2] = brakeW(c.w[2] + d2, dt * Tbi[2] / A2); c.w[3] = brakeW(c.w[3] + d3, dt * Tbi[3] / A3);
   }
   // assists: traction control trims motor torque to hold the rear near peak slip; ABS releases a locking wheel
   if (prefs.assist) {
     c.tc = clamp(c.tc + dt * (tcOver > 1.05 ? -10 * (tcOver - 1) : 3), 0.15, 1);
-    // ABS with brake distribution, as real units do: the allowed slip shrinks with cornering (a tyre at peak brake
-    // slip has little side grip), and the rears are held below the fronts so the car stays straight under braking
-    const kf = Math.min(kap[0], kap[1]);
+    // ABS (an assist: none of the three cars has one): each wheel is held near peak slip; the target shrinks as the
+    // tyre corners harder, since a tyre at peak brake slip has little side grip left
     for (let i = 0; i < 4; i++) {
-      const lim = -PEAK.k * Math.max(0.3, 1 - (c.alp[i] / PEAK.a) ** 2) * (i < 2 ? 1.1 : 0.75);
-      // cornering brake control: under braking, if the rear is sliding more than the front (rotating), release the rears
-      const cbc = i >= 2 && c.brk > 0.05 && Math.abs(c.alp[i]) > Math.max(Math.abs(c.alp[0]), Math.abs(c.alp[1])) + 0.008;
-      const over = kap[i] < lim || cbc || (i >= 2 && kap[i] < kf - 0.01 && kap[i] < -0.02);
-      c.abs[i] = clamp(c.abs[i] + dt * (over ? (cbc ? -25 : -14) : 5), cbc ? 0 : 0.1, 1);
+      const lim = -PEAK.k * Math.max(0.3, 1 - (c.alp[i] / PEAK.a) ** 2);
+      c.abs[i] = clamp(c.abs[i] + dt * (kap[i] < lim ? -14 : 5), 0.1, 1);
     }
   } else { c.tc = 1; c.abs.fill(1); }
   if (v > 0.05) { Fx -= drag * c.vx / v; Fy -= drag * c.vy / v; }
   const grade = free ? 0 : T.HD[c.idx] * Math.cos(c.psi - Math.atan2(T.TY[c.idx], T.TX[c.idx]));
   Fx -= Wt * grade;
   const axb = Fx / VP.m, ayb = Fy / VP.m;
-  c.vx += (axb + c.r * c.vy) * dt; c.vy += (ayb - c.r * c.vx) * dt; c.r += Mz / VP.Iz * dt;
+  const vx0 = c.vx; c.vx += (axb + c.r * c.vy) * dt; c.vy += (ayb - c.r * c.vx) * dt; c.r += Mz / VP.Iz * dt; c.dvx = c.vx - vx0;
   // parked: settle to rest instead of creeping
   if (v < 0.4 && !inp.thr && !c.rev) { const kk = Math.exp(-dt * 8); c.vx *= kk; c.vy *= kk; c.r *= kk; for (let i = 0; i < 4; i++) c.w[i] *= kk; }
   const lp = Math.min(1, dt / 0.06); c.ax += (axb - c.ax) * lp; c.ay += (ayb - c.ay) * lp;
   const cp = Math.cos(c.psi), sp = Math.sin(c.psi);
   c.x += (c.vx * cp - c.vy * sp) * dt; c.y += (c.vx * sp + c.vy * cp) * dt; c.psi += c.r * dt;
   c.power = Ta / VP.G / VP.eta * wm;
-  c.energy += Math.max(0, c.power) / 0.9 * dt;
+  c.energy += Math.max(0, c.power) / 0.92 * dt;          // back to the pack through the inverter + motor
   if (free) return;
   // track relation
   const p = project(c.x, c.y, c.idx, 12); c.idx = p.idx; c.s = p.s; c.d = p.d; c.nx = p.nx; c.ny = p.ny;
@@ -1212,8 +1317,7 @@ function physStep(dt, inp, free) {
    the inside of tight corners where the sample points bunch up.
    Speed: quasi-steady-state lap sim in the style of FEBSim / OpenLAP: corner speed from the car's grip
    with downforce, a forward pass limited by motor force and rear traction, a backward pass limited by
-   braking grip, and the friction ellipse throughout. Grip uses the same model as the driving physics;
-   on the team's Michigan 2014 centreline it lands within ~2% of their OpenLAP SN3 lap. */
+   braking grip, and the friction ellipse throughout, all measured from the driving physics itself. */
 const RL = (() => {
   const N = T.N, lim = Math.max(0.3, HALF_W - 1.1), n = new Float64Array(N);
   const px = k => T.X[k] + T.NX[k] * n[k], py = k => T.Y[k] + T.NY[k] * n[k];
@@ -1302,43 +1406,11 @@ function measureEnvelope() {
   // bins the runs didn't reach take their neighbours' values
   for (let b = 1; b < nb; b++) { if (!acc[b]) acc[b] = acc[b - 1]; if (!brk[b]) { brk[b] = brk[b - 1]; brkL[b] = brkL[b - 1]; } }
   for (let b = nb - 2; b >= 0; b--) { if (!brk[b]) { brk[b] = brk[b + 1]; brkL[b] = brkL[b + 1]; } }
-  // combined limit (GG): at each speed, settle into a steady corner at a share f of the cornering limit, then try
-  // each brake level from that state; keep the hardest braking that stays stable (slip < 8 deg, no spin, still
-  // turning). Stored as a fraction of straight-line braking.
-  const GF = [0, 0.3, 0.5, 0.7, 0.85, 1], GV = [], gg = [];
-  for (let v = 8; v <= VP.vmax * 0.95; v += 5) {
-    GV.push(v); const row = [1];
-    for (const f of GF.slice(1, -1)) {
-      // hold a constant share f of the cornering limit (the radius tightens as the car slows), so braking is measured
-      // at the lateral load it will really carry on a corner entry
-      const latAt = s => lat[Math.min(nb - 1, Math.max(1, Math.round(s / ENV_DV)))], kOf = s => f * latAt(s) / Math.max(1, s * s);
-      reset(v); car.r = v * kOf(v);
-      const hold = (brake) => { const sp = Math.hypot(car.vx, car.vy), kt = kOf(sp), e = v - sp, d = Math.atan(VP.L * kt) + 0.6 * (sp * kt - car.r) + 0.02;
-        physStep(dt, { delta: clamp(d, -DELTA_MAX, DELTA_MAX), thr: brake ? 0 : clamp(0.2 + e * 0.5, 0, 0.6), brake }, true); };
-      for (let i = 0; i < 240 * 1.2; i++) hold(0);
-      const settled = structuredClone(car); let best = 0;
-      for (const L of [1, 0.75, 0.5, 0.3]) {
-        Object.assign(car, structuredClone(settled)); const v0 = Math.hypot(car.vx, car.vy); let ok = true;
-        for (let i = 0; i < 240 * 0.6; i++) { hold(L); const sp = Math.hypot(car.vx, car.vy), b = Math.abs(Math.atan2(car.vy, car.vx)); if (b > 0.1 || car.r < 0 || Math.abs(car.r * sp) < 0.8 * f * latAt(sp)) { ok = false; break; } }
-        if (ok) { best = Math.max(best, (v0 - Math.hypot(car.vx, car.vy)) / 0.6); }
-      }
-      row.push(clamp(best / Math.max(1, brk[Math.round(v / ENV_DV)]), 0, 1));
-    }
-    row.push(0); gg.push(row);
-  }
   Object.assign(car, snap);
-  return { acc, brk, brkL, lat, t75, nb, gg: { GF, GV, gg } };
+  return { acc, brk, brkL, lat, t75, nb };
 }
 // tyre-limited cornering ceiling: peak mu x (weight + downforce) / m
-function latCap(v) { return (VP.mu * VP.g + 0.6 * Math.max(0, VP.ClA) * v * v * VP.mu / VP.m) * 1.02; }
-// braking available at speed v while using a share f of the cornering limit (bilinear in the measured GG table)
-function ggBrake(E, v, f) {
-  const { GF, GV, gg } = E.gg; if (!GV.length) return Math.sqrt(Math.max(0, 1 - f * f));
-  let i = 0; while (i < GV.length - 2 && GV[i + 1] < v) i++; const tv = clamp((v - GV[i]) / ((GV[i + 1] ?? GV[i] + 1) - GV[i]), 0, 1);
-  let j = 0; while (j < GF.length - 2 && GF[j + 1] < f) j++; const tf = clamp((f - GF[j]) / (GF[j + 1] - GF[j]), 0, 1);
-  const r0 = gg[i], r1 = gg[Math.min(gg.length - 1, i + 1)], a = lerp(r0[j], r0[j + 1], tf), b = lerp(r1[j], r1[j + 1], tf);
-  return lerp(a, b, tv);
-}
+function latCap(v) { return (VP.mu * VP.g + AIR * Math.max(0, VP.ClA) * v * v * VP.mu / VP.m) * 1.02; }
 function envFor(id) {
   const key = id + (prefs.assist ? ':a' : ':r'); if (ENV.has(key)) return ENV.get(key);
   const keep = VP.id; if (keep !== id) applyCar(id);
@@ -1347,44 +1419,49 @@ function envFor(id) {
   return e;
 }
 const envAt = (arr, v) => { const f = clamp(v / ENV_DV, 0, arr.length - 1.001), i = Math.floor(f); return arr[i] + (arr[i + 1] - arr[i]) * (f - i); };
-// how fast the front wheels can be turned (rad/s), as the physics allows for the current input device
-const usingWheel = () => listPads().some(p => binds[p.id] || p.mapping !== 'standard');
-const analogPedals = () => listPads().length > 0;          // any pad or wheel: triggers/pedals can be modulated
-function steerRate(v) { return usingWheel() ? 12 : steerRateFor(v, false); }
 // speed profile along the racing line for the current car. phase: 0 accelerating, 1 at the corner limit, 2 braking.
-// Limits: lateral grip (envelope), steering rate (the wheels can only turn so fast through a change of direction:
-// d(delta)/dt ~ L * dkappa/ds * v), braking and traction with the friction ellipse, and capF (per-point speed
-// caps added where the validation drive couldn't hold the line).
-function lapSim(out, E = envFor(VP.id), capF = null) {
+// Limits: lateral grip, braking and drive measured from the car's own physics (the envelope), combined with the
+// friction ellipse - the same budget the virtual driver's feet use, so following the colours with keys works.
+// This is the car's limit: no margins for any particular driver or device.
+function lapSim(out, E = envFor(VP.id)) {
   const N = RL.N, { len, kap } = RL, m = VP.m, g = VP.g;
-  // the reference is driven at 97% of the measured steady-state limits: a fast driver keeps a little in hand for
-  // transients (kerbs, direction changes), and a line at 100% has no room to stay on it
-  const M = 0.97, lat = v => M * envAt(E.lat, v), acc = v => M * envAt(E.acc, v), brk = v => M * envAt(E.brk, v);
-  // rear-tyre traction available for driving out of a corner (the same TC cap the physics uses)
-  // (no assists: assume a driver who keeps ~12% of the rear grip in hand on exits, as a human does by feel)
-  const capT = prefs.assist ? 0.95 : 0.88, kT = capT * VP.mu;   // TC holds the rear near peak slip
-  const trac = v => (kT * (m * g * VP.a / VP.L + 0.6 * VP.ClA * v * v * (1 - VP.aeroF)) - 0.6 * VP.CdA * v * v) / (m * (1 - kT * VP.h / VP.L));
+  // 99%: the envelope is steady-state; the last 1% covers the transients of turn-in
+  const M = 0.99, lat = v => M * envAt(E.lat, v), acc = v => M * envAt(E.acc, v), brk = v => M * envAt(E.brk, v);
+  // rear-tyre traction for driving out of a corner, at the rears' real (load-sensitive) grip, with the load the
+  // acceleration itself moves onto them. No assists: a driver keeps ~12% of the rear grip in hand by feel
+  const capT = prefs.assist ? 0.95 : 0.88, dragF = v => AIR * VP.CdA * v * v;
+  const tracF = v => { let ax = 0, F = 0; for (let it = 0; it < 4; it++) { const Nr = m * g * VP.a / VP.L + AIR * Math.max(0, VP.ClA) * v * v * (1 - VP.aeroF) + m * ax * VP.h / VP.L; F = capT * tyreMu(Nr / 2) * Nr; ax = (F - dragF(v)) / m; } return F; };
+  // the envelope's accelerations are net of drag: turn them back into tyre forces so cornering (the ellipse) only
+  // eats into what the tyres do, not the drag
+  // accelerating moves load off the fronts, and these cars are front-limited (they understeer), so the cornering
+  // grip left on a corner exit shrinks with the acceleration: iterate the two to a consistent pair
+  const driveA = (v, k) => {
+    let a = 0;
+    for (let it = 0; it < 3; it++) {
+      const fr = Math.max(0.3, 1 - Math.max(0, a) * VP.h / (g * VP.L * VP.front)), f = v * v * Math.abs(kap[k]) / (lat(v) * fr);
+      const el = Math.sqrt(Math.max(0, 1 - f * f));
+      a = (Math.min(acc(v) * m + dragF(v), tracF(v) * el) - dragF(v)) / m;
+    }
+    return a - g * T.HD[k];
+  };
+  const brakeA = (v, k) => (Math.max(0, brk(v) * m - dragF(v)) * ell(v, k) + dragF(v)) / m + g * T.HD[k];
   const vcap = VP.vmax * 0.995, vc = new Float64Array(N), fw = new Float64Array(N), bw = new Float64Array(N);
   for (let k = 0; k < N; k++) {
-    const kk = Math.abs(kap[k]), a = (k - 2 + N) % N, b = (k + 2) % N;
-    const dk = Math.abs(kap[b] - kap[a]) / Math.max(0.5, len[a] + len[(a + 1) % N] + len[k] + len[(k + 1) % N]);
-    const ok = v => v * v * kk <= lat(v) && v * VP.L * dk <= steerRate(v);
+    const kk = Math.abs(kap[k]);
+    const ok = v => v * v * kk <= lat(v);
     let lo = 0.3, hi = vcap;
     if (ok(hi)) lo = hi; else for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (ok(mid)) lo = mid; else hi = mid; }
-    vc[k] = lo * (capF ? capF[k] : 1);
+    vc[k] = lo;
   }
   const ell = (v, k) => Math.sqrt(Math.max(0, 1 - (v * v * Math.abs(kap[k]) / lat(v)) ** 2));
   let k0 = 0; for (let k = 1; k < N; k++) if (vc[k] < vc[k0]) k0 = k;
   fw[k0] = vc[k0];
   for (let q = 0; q < N; q++) { const k = (k0 + q) % N, j = (k + 1) % N, v = fw[k];
-    const a = Math.min(acc(v), trac(v) * ell(v, k));
-    fw[j] = Math.min(vc[j], Math.sqrt(Math.max(0, v * v + 2 * a * len[k]))); }
-  // braking while cornering comes from the measured GG limit (how hard this car can brake at a given share of its
-  // cornering grip and stay stable), not an ellipse: braking moves load off the rear, so the rear sets the limit
-  const brkAt = (v, k) => { const f = clamp(v * v * Math.abs(kap[k]) / lat(v), 0, 1); return brk(v) * ggBrake(E, v, f); };
+    fw[j] = Math.min(vc[j], Math.sqrt(Math.max(0, v * v + 2 * driveA(v, k) * len[k]))); }
+
   bw[k0] = fw[k0];
   for (let q = 0; q < N; q++) { const j = (k0 - q + N) % N, k = (j - 1 + N) % N, v = bw[j];
-    bw[k] = Math.min(fw[k], Math.sqrt(v * v + 2 * brkAt(v, k) * len[k])); }
+    bw[k] = Math.min(fw[k], Math.sqrt(Math.max(0, v * v + 2 * brakeA(v, k) * len[k]))); }
   let t = 0; const brakePts = [], tAt = new Float64Array(N + 1);
   for (let k = 0; k < N; k++) {
     const v = bw[k], j = (k + 1) % N; out.v[k] = v; tAt[k] = t; t += len[k] / Math.max(0.5, (v + bw[j]) / 2);
@@ -1401,74 +1478,70 @@ function lapSim(out, E = envFor(VP.id), capF = null) {
 // simulated lap and card stats for every car on this track
 const SIM = {}, STATS = {}, PREVIEW = {}; let G_SIM_MS = 0;
 function carPerf(E) {
-  let lo = 1, hi = 80; for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (motorForce(mid) > 0.6 * VP.CdA * mid * mid + 0.014 * VP.m * VP.g) lo = mid; else hi = mid; }
+  let lo = 1, hi = 80; for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (motorForce(mid) > AIR * VP.CdA * mid * mid + TY.crr * (VP.m * VP.g + AIR * Math.max(0, VP.ClA) * mid * mid)) lo = mid; else hi = mid; }
   return { acc: E.t75, top: lo * 3.6, lo: envAt(E.lat, 40 / 3.6) / VP.g, hi: envAt(E.lat, 100 / 3.6) / VP.g };
 }
-/* Validation drive: a flying lap of the line through the real physics (track walls, kerbs, slopes, assists),
-   with steering feed-forward from the line's curvature plus heading/offset correction, and speed tracking
-   with a little preview for brake lag. Returns the lap time and every place it couldn't hold the line. */
-function driveLap(prof, E, trace) {   // trace: optional array, gets a state sample every 0.1 s (debugging)
-  const snap = structuredClone(car), N = RL.N, dt = 1 / 240, wheel = usingWheel(), bad = [];
-  const k0 = (N - Math.round(60 / T.ds)) % N; placeCar(k0, 0); car.x = RL.X[k0]; car.y = RL.Y[k0]; car.vx = prof.v[k0]; syncWheels();
-  let t = 0, dist = 0, prevS = car.s, tLap = 0, started = false, errMax = 0, hits = 0, kb = k0, brkCap = 1, thrCap = 1;
+/* Test driver (not used to shape the line): a flying lap of the line through the real physics (walls, kerbs,
+   slopes, assists), driven the way a person plays. mode 'keys': on/off keys through the virtual driver - steer
+   key toward a point ~0.5 s ahead on the line, throttle when below the target speed, brake key held while above
+   it. mode 'wheel': analog wheel and pedals, raw. Returns the lap time and every place it lost the line. */
+function driveLap(prof, E, mode = 'keys', trace, pace = 1) {   // pace: share of the line's speed the driver aims for
+  const snap = structuredClone(car), N = RL.N, dt = 1 / 240, bad = [];
+  const k0 = (N - Math.round(60 / T.ds)) % N; placeCar(k0, 0); car.x = RL.X[k0]; car.y = RL.Y[k0]; car.vx = prof.v[k0]; syncWheels(); vdReset();
+  let t = 0, dist = 0, prevS = car.s, tLap = 0, started = false, errMax = 0, hits = 0, kb = k0, key = 0, keyT = 0, maxBeta = 0, thrCap = 1, wide = 0;
   while (t < 400) {
     const v = Math.max(1, Math.hypot(car.vx, car.vy));
     let bd = 1e9; const k = car.idx; for (let q = -6; q <= 6; q++) { const j = (k + q + N) % N, d = (RL.X[j] - car.x) ** 2 + (RL.Y[j] - car.y) ** 2; if (d < bd) { bd = d; kb = j; } }
     const j2 = (kb + 1) % N, tx = RL.X[j2] - RL.X[kb], ty = RL.Y[j2] - RL.Y[kb], tl = Math.hypot(tx, ty) || 1;
-    const e = ((car.x - RL.X[kb]) * -ty + (car.y - RL.Y[kb]) * tx) / tl, he = wrapA(Math.atan2(ty, tx) - car.psi);
-    const ka = RL.kap[(kb + Math.max(1, Math.round(v * 0.12 / T.ds))) % N];
-    // feed-forward from the line's curvature, heading and offset correction, and yaw damping: unwind when the car
-    // rotates faster than the line needs (what a driver does to keep a car stable)
-    const delta = Math.atan(VP.L * ka) * 1.1 + he + Math.atan(-1.4 * e / (v + 2)) - 0.07 * (car.r - v * ka);
-    const dmax = wheel ? DELTA_MAX : steerLimit(v, Math.atan2(car.vy, Math.max(Math.abs(car.vx), 0.5)), Math.sign(delta));   // same limit the player gets
-    let tv = prof.v[j2]; for (let q = 1, n = Math.max(1, Math.round(v * 0.25 / T.ds)); q <= n; q++) tv = Math.min(tv, prof.v[(kb + q) % N]);
-    // pedal = what the profile asks for here as a share of what the car can do, plus a correction toward the
-    // target speed (a measured squeeze, not full-throttle stabs, so it also works without traction control)
-    const aReq = (prof.v[j2] ** 2 - prof.v[kb] ** 2) / (2 * Math.max(0.3, RL.len[kb]));
-    let thr = 0, brake = 0;
-    if (v > tv + 0.15) brake = clamp(Math.max(0, -aReq) / Math.max(1, envAt(E.brk, v)) + (v - tv) * 1.2, 0, envAt(E.brkL, v));   // never past threshold
-    else thr = clamp(Math.max(0, aReq) / Math.max(0.5, envAt(E.acc, v)) + (tv - v) * 0.6 + 0.08, 0, 1);
-    if (!analogPedals()) { brake = brake > 0.05 ? 1 : 0; thr = thr > 0.5 ? 1 : thr > 0.05 && prof.phase[kb] !== 0 ? (Math.round(t * 20) % 2) : thr > 0.05 ? 1 : 0; }   // keys: on or off (tapping to hold a speed)
-    // without TC/ABS, drive like a person who feels the tyres: when a wheel locks or the rears spin up, back the
-    // pedal limit off and only creep back once they're rolling again (a remembered limit, not a one-frame flinch)
-    if (!prefs.assist) {
-      const kmin = Math.min(...car.kap), kr = Math.max(car.kap[2], car.kap[3]);
-      brkCap = kmin < -PEAK.k * 1.2 ? Math.max(0.1, brkCap - dt * 3) : Math.min(1, brkCap + dt * 0.6);
-      thrCap = kr > PEAK.k * 1.2 ? Math.max(0.1, thrCap - dt * 3) : Math.min(1, thrCap + dt * 0.8);
-      brake = Math.min(brake, brkCap); thr = Math.min(thr, thrCap);
+    const e = ((car.x - RL.X[kb]) * -ty + (car.y - RL.Y[kb]) * tx) / tl;
+    // pure pursuit to a point on the line ahead: the curvature that reaches it
+    const la = Math.max(5, v * 0.45), ja = (kb + Math.round(la / T.ds)) % N, cp = Math.cos(car.psi), sp = Math.sin(car.psi);
+    const dx = RL.X[ja] - car.x, dy = RL.Y[ja] - car.y, ly = -dx * sp + dy * cp, L2 = dx * dx + dy * dy;
+    const kNeed = 2 * ly / Math.max(1, L2), aMax = envAt(E.lat, v);
+    let tv = prof.v[j2]; for (let q = 1, n = Math.max(1, Math.round(v * 0.3 / T.ds)); q <= n; q++) tv = Math.min(tv, prof.v[(kb + q) % N]); tv *= pace;
+    let inp;
+    if (mode === 'pad') {
+      const brakeK = v > tv + 0.3, thrK = !brakeK && v < tv - 0.3;
+      inp = virtualDriver(dt, { digital: false, steer: clamp(kNeed * v * v / (0.97 * aMax), -1, 1), thr: thrK ? 1 : 0, brake: brakeK ? 1 : 0 }, E);
+    } else if (mode === 'keys') {
+      const sNeed = kNeed * v * v / (0.97 * aMax);
+      // a person taps: press toward more turn when the car needs it, let go when it has too much, otherwise
+      // keep doing what they were doing; a press or release lasts >= 70 ms
+      keyT -= dt;
+      if (keyT <= 0) { let want = key; if (sNeed > VD.s + 0.06) want = 1; else if (sNeed < VD.s - 0.06) want = -1; else if ((key > 0 && sNeed < VD.s) || (key < 0 && sNeed > VD.s)) want = 0;
+        if (Math.sign(sNeed) !== Math.sign(want) && Math.abs(sNeed) > 0.1 && want !== 0 && Math.abs(VD.s) < Math.abs(sNeed)) want = Math.sign(sNeed);
+        if (want !== key) { key = want; keyT = 0.07; } }
+      const brakeK = v > tv + 0.3, thrK = !brakeK && v < tv - 0.3;
+      inp = virtualDriver(dt, { digital: true, steer: key, thr: thrK ? 1 : 0, brake: brakeK ? 1 : 0 }, E);
+    } else {
+      const aReq = (prof.v[j2] ** 2 - prof.v[kb] ** 2) / (2 * Math.max(0.3, RL.len[kb]));
+      let thr = 0, brake = 0;
+      if (v > tv + 0.15) brake = clamp(Math.max(0, -aReq) / Math.max(1, envAt(E.brk, v)) + (v - tv) * 1.2, 0, prefs.assist ? 1 : envAt(E.brkL, v));
+      else thr = clamp(Math.max(0, aReq) / Math.max(0.5, envAt(E.acc, v)) + (tv - v) * 0.6 + 0.08, 0, 1);
+      // without TC a driver feels the rears start to spin and squeezes the throttle back (a remembered limit)
+      if (!prefs.assist) { const kr = Math.max(car.kap[2], car.kap[3]); thrCap = kr > PEAK.k * 0.9 ? Math.max(0.1, thrCap - dt * 4) : Math.min(1, thrCap + dt * 0.7); thr = Math.min(thr, thrCap); }
+      inp = { delta: Math.atan(VP.L * kNeed) - 0.05 * (car.r - v * kNeed), thr, brake };
     }
-    physStep(dt, { steer: clamp(delta / dmax, -1, 1), thr, brake, wheel }, false); t += dt;
-    if (trace && Math.round(t * 240) % 24 === 0) trace.push({ t: +t.toFixed(1), k: kb, v: +(v * 3.6).toFixed(0), tgt: +(tv * 3.6).toFixed(0), thr: +thr.toFixed(2), brk: +brake.toFixed(2), st: +clamp(delta / dmax, -1, 1).toFixed(2), beta: +(Math.atan2(car.vy, car.vx) * 57.3).toFixed(0), r: +car.r.toFixed(2), slip: car.slip.map(x => +x.toFixed(1)), e: +e.toFixed(1) });
+    physStep(dt, inp, false); t += dt;
+    const beta = Math.abs(Math.atan2(car.vy, Math.max(Math.abs(car.vx), 0.5))); if (started) maxBeta = Math.max(maxBeta, beta);
+    if (trace && Math.round(t * 240) % 24 === 0) trace.push({ t: +t.toFixed(1), k: kb, v: +(v * 3.6).toFixed(0), tgt: +(tv * 3.6).toFixed(0), thr: +inp.thr.toFixed(2), brk: +inp.brake.toFixed(2), d: +(inp.delta * 57.3).toFixed(1), beta: +(beta * 57.3).toFixed(0), e: +e.toFixed(1) });
     let ds = car.s - prevS; if (ds < -T.L / 2) ds += T.L; if (ds > T.L / 2) ds -= T.L; prevS = car.s;
     if (!started && dist + ds >= 60 - 1e-9 && dist < 60) { started = true; tLap = t; }
     dist += ds;
     if (started) {
-      const err = Math.abs(e); errMax = Math.max(errMax, err);   // perpendicular distance to the line (the points are 2 m apart)
-      if (car.impact > 0 || car.allOff || err > 1.0) { if (car.impact > 0) hits++; if (!bad.length || bad[bad.length - 1] !== kb) bad.push(kb); }
-      if (err > 6 || (t - tLap > 5 && v < 1.5)) break;                      // lost it: stop here, the rest is moot
+      const err = Math.abs(e); errMax = Math.max(errMax, err);
+      // a failure is what a player would call one: a spin (> 15 deg of slide), a wall, or the car off the track;
+      // two wheels over the edge on an exit is just running wide, counted separately
+      if (car.impact > 0 || car.allOff || beta > 0.26) { if (car.impact > 0) hits++; if (!bad.length || bad[bad.length - 1] !== kb) bad.push(kb); }
+      if (car.off[0] + car.off[1] + car.off[2] + car.off[3] >= 2) wide += dt;
+      if (err > 8 || beta > 1.2 || (t - tLap > 5 && v < 1.5)) break;
       if (dist >= 60 + T.L) break;
     }
     car.impact = 0;
   }
-  const res = { t: t - tLap, ok: !bad.length && dist >= 60 + T.L, bad, errMax, hits };
-  Object.assign(car, snap);
+  const res = { t: t - tLap, ok: !bad.length && dist >= 60 + T.L, bad, errMax, hits, maxBeta: maxBeta * 57.3, wide, sim: prof.lap };
+  Object.assign(car, snap); vdReset();
   return res;
-}
-// lap sim + validation for every car: slow the approach wherever the drive lost the line, until it holds
-const CAPF = {}, VALID = {};
-function validatedSim(id, E) {
-  const N = RL.N, capF = new Float64Array(N).fill(1), prof = { v: new Float64Array(N), phase: new Uint8Array(N) };
-  let res = null, it = 0;
-  for (; it < 8; it++) {
-    lapSim(prof, E, capF); res = driveLap(prof, E);
-    if (res.ok) break;
-    // slow the approach to each trouble spot once per round: 4% near it, 1.5% further back
-    const back = Math.round(40 / T.ds), cut = new Float64Array(N).fill(1);
-    for (const k of res.bad) for (let q = -back; q <= 3; q++) { const j = (k + q + N) % N; cut[j] = Math.min(cut[j], q < -back / 2 ? 0.985 : 0.96); }
-    for (let j = 0; j < N; j++) capF[j] *= cut[j];
-  }
-  CAPF[id] = capF; VALID[id] = { ok: res.ok, iters: it + 1, errMax: res.errMax, driven: res.t, sim: prof.lap };
-  return res.ok ? res.t : prof.lap;
 }
 // the simulated lap as a telemetry trace (time at each GRID metres), for the live delta before you have a best lap
 function simTel() {
@@ -1477,8 +1550,9 @@ function simTel() {
 }
 function refreshSim() {
   const keep = VP.id;
-  for (const id of CAR_IDS) { applyCar(id); const E = envFor(id); SIM[id] = validatedSim(id, E); STATS[id] = carPerf(E); }
-  applyCar(keep); lapSim(RL, envFor(keep), CAPF[keep]);
+  const prof = { v: new Float64Array(RL.N), phase: new Uint8Array(RL.N) };
+  for (const id of CAR_IDS) { applyCar(id); const E = envFor(id); SIM[id] = lapSim(prof, E); STATS[id] = carPerf(E); }
+  applyCar(keep); lapSim(RL, envFor(keep));
 }
 // small 3/4 renders of each car for the picker, drawn by the main renderer into an offscreen target
 // (a second WebGL context trips some drivers)
@@ -1660,7 +1734,7 @@ addEventListener('mousedown', () => window.focus());
    Wheels report a non-standard layout that differs per model and OS, so "Wheel setup" learns which
    axis is steering and each pedal (and their rest/full values) by watching the driver use them.
    Bindings are stored per device id. */
-const PAD = { steer: 0, thr: 0, brake: 0, kind: '', index: -1 };
+const PAD = { steer: 0, steerDeg: 0, thr: 0, brake: 0, kind: '', index: -1 };
 let binds = {}; try { binds = JSON.parse(localStorage.getItem(KEY + '-pads')) || {}; } catch (e) {}
 function saveBinds() { try { localStorage.setItem(KEY + '-pads', JSON.stringify(binds)); } catch (e) {} }
 const bval = b => !b ? 0 : typeof b === 'object' ? b.value : +b;
@@ -1682,9 +1756,11 @@ function readPad(p) {
     const ax = p.axes[0] || 0, ay = p.axes[1] || 0;
     Object.assign(act, { start: bval(b[9]) > 0.5, restart: bval(b[8]) > 0.5, confirm: bval(b[0]) > 0.5, back: bval(b[1]) > 0.5, cam: bval(b[3]) > 0.5, line: bval(b[2]) > 0.5, prevCar: bval(b[4]) > 0.5, nextCar: bval(b[5]) > 0.5,
       up: bval(b[12]) > 0.5 || ay < -0.6, down: bval(b[13]) > 0.5 || ay > 0.6, left: bval(b[14]) > 0.5 || ax < -0.6, right: bval(b[15]) > 0.5 || ax > 0.6 });
-  } else { PAD.steer = clamp(-(p.axes[0] || 0), -1, 1); PAD.thr = PAD.brake = 0; }
+  } else { PAD.steer = clamp(-(p.axes[0] || 0), -1, 1); PAD.steerDeg = PAD.steer * (prefs.wheelRot || 900) / 2; PAD.thr = PAD.brake = 0; }
   if (bd) {
     if (bd.steer) PAD.steer = -clamp(norm(p, bd.steer), -1, 1);
+    // the axis spans the wheel's whole rotation (set in the wheel's own software), so its angle in degrees is exact
+    if (bd.steer) { const raw = chVal(p, bd.steer.t, bd.steer.i), dir = Math.sign(bd.steer.full - bd.steer.rest) || 1; PAD.steerDeg = -(raw - bd.steer.rest) * dir * (prefs.wheelRot || 900) / 2; }
     if (bd.thr) PAD.thr = pedal(p, bd.thr);
     if (bd.brake) PAD.brake = pedal(p, bd.brake);
     if (bd.pause) act.start = act.start || bval(b[bd.pause.i]) > 0.5;
@@ -1725,7 +1801,7 @@ function padRumble(m, ms) {
 /* wheel setup: watch for the channel the driver moves, record where it rests and how far it goes */
 const SU = { on: false, pad: -1, step: 0, data: {}, base: null, cand: null, peak: 0, settle: 0, waitRelease: false, back: null };
 const STEPS = [
-  { k: 'steer', text: 'Turn the wheel right to full lock and hold it. These cars have about 123° of lock each way (38° at the tyres through a 3.24:1 rack), so set your wheel to ~250° in its software for a 1:1 feel, or just turn as far as feels right.', release: 'Got it. Now back to center.' },
+  { k: 'steer', text: 'Turn the wheel about a quarter turn to the right and hold it.', release: 'Got it. Now back to center.' },
   { k: 'thr', text: 'Press the throttle all the way down and hold it.', release: 'Got it. Now let go.' },
   { k: 'brake', text: 'Press the brake all the way down and hold it.', release: 'Got it. Now let go.' },
   { k: 'pause', btn: true, text: 'Press the button you want for pause.' },
@@ -1746,6 +1822,10 @@ function showCheck() {
   SU.check = true; $('suStep').textContent = 'Check your inputs: turn the wheel and press each pedal.';
   for (const id of ['suCheck', 'suDone', 'suRedo']) $(id).classList.remove('hidden');
   for (const id of ['suMeterBox', 'suSkip']) $(id).classList.add('hidden');
+  $('suRot').value = prefs.wheelRot || 900;
+  $('suRotHint').textContent = `(the real ${VP.name} has ~${Math.round(2 * DELTA_MAX * 180 / Math.PI * VP.rack)}°: match it in your wheel's software for 1:1)`;
+  $('ffbGain').value = prefs.ffbGain; $('ffbInv').checked = !!prefs.ffbInv;
+  $('ffbRow').classList.toggle('hidden', !navigator.hid); ffbStatus();
 }
 function redoSetup() {
   for (const id of ['suCheck', 'suDone', 'suRedo']) $(id).classList.add('hidden'); $('suMeterBox').classList.remove('hidden');
@@ -1798,6 +1878,93 @@ function bindSetupButtons() {
   btn('suCancel', () => endSetup()); btn('suDone', () => endSetup()); btn('suRedo', () => redoSetup());
   btn('suDefault', () => { const p = navigator.getGamepads()[SU.pad]; if (p) { delete binds[p.id]; saveBinds(); } endSetup(); });
   btn('tPad', openSetup); btn('oPad', openSetup);
+  $('suRot').addEventListener('change', () => { prefs.wheelRot = clamp(+$('suRot').value || 900, 90, 2520); $('suRot').value = prefs.wheelRot; savePrefs(); });
+  $('ffbGain').addEventListener('input', () => { prefs.ffbGain = +$('ffbGain').value; savePrefs(); });
+  $('ffbInv').addEventListener('change', () => { prefs.ffbInv = $('ffbInv').checked; savePrefs(); });
+  btn('ffbBtn', () => FFB.dev ? ffbClose() : ffbConnect());
+}
+
+/* ---- Force feedback (WebHID, Chrome/Edge) ----
+   Wheels like the MOZA R3 are standard USB HID "PID" force-feedback devices, so the page can drive them directly:
+   create one constant-force effect, start it, then stream its magnitude. Report layouts differ per device, so
+   they're read from the device's own descriptor (WebHID collections), never hard-coded. The torque is the front
+   tyres' self-aligning moment (lateral force x (pneumatic + mechanical trail)) through the steering ratio, so the
+   wheel goes light as the fronts pass their peak slip, plus a little damping. Rotation range and overall
+   strength still come from the wheel's own software (Pit House for MOZA). */
+const PID = 0x0F;
+const FFB = { dev: null, r: null, block: 1, last: 0, err: '' };
+const pidU = id => (PID << 16) | id;
+function hidReports(dev, kind) { const out = []; const walk = cs => { for (const c of cs || []) { for (const r of c[kind] || []) out.push(r); walk(c.children); } }; walk(dev.collections); return out; }
+function itemUsages(it) { if (it.isRange) { const u = []; for (let x = it.usageMinimum; x <= it.usageMaximum; x++) u.push(x); return u; } return it.usages || []; }
+const hasU = (r, id) => r.items.some(it => itemUsages(it).includes(pidU(id)));
+// pack a report from {usage id: value}; array items take the usage id to select (e.g. effect type, operation)
+function packReport(r, vals) {
+  const bits = r.items.reduce((n, it) => n + it.reportSize * it.reportCount, 0), buf = new Uint8Array(Math.ceil(bits / 8)); let pos = 0;
+  const put = (v, size) => { v = Math.round(v); if (v < 0) v += 2 ** size; for (let b = 0; b < size; b++, pos++) if ((v >> b) & 1) buf[pos >> 3] |= 1 << (pos & 7); };
+  for (const it of r.items) {
+    const us = itemUsages(it);
+    for (let k = 0; k < it.reportCount; k++) {
+      let v = 0;
+      if (it.isArray) { const want = us.findIndex(u => vals[u & 0xffff] === true && (u >> 16) === PID); v = want >= 0 ? it.logicalMinimum + want : 0; }
+      else {
+        const u = us[Math.min(k, us.length - 1)], pg = u >> 16;
+        let x = pg === PID ? vals[u & 0xffff] : undefined;
+        if (pg === 0x01 && (u & 0xffff) === 0x30) x = 1;                                    // axes enable: steering (X)
+        if (pg === 0x0A) x = it.logicalMaximum >= 35999 ? 9000 : Math.round(it.logicalMaximum / 4);   // direction: 90 deg
+        v = x === undefined ? 0 : x === true ? 1 : clamp(x, it.logicalMinimum, it.logicalMaximum);
+      }
+      put(v, it.reportSize);
+    }
+  }
+  return buf;
+}
+async function ffbConnect() {
+  try {
+    const [dev] = await navigator.hid.requestDevice({ filters: [{ usagePage: PID }, { vendorId: 0x346E }] });
+    if (!dev) return;
+    if (!dev.opened) await dev.open();
+    const outs = hidReports(dev, 'outputReports'), feats = hidReports(dev, 'featureReports');
+    const r = {
+      effect: outs.find(x => hasU(x, 0x50)), constant: outs.find(x => hasU(x, 0x70) && !hasU(x, 0x72)), op: outs.find(x => hasU(x, 0x78) || hasU(x, 0x7C)),
+      ctrl: outs.find(x => hasU(x, 0x97) || hasU(x, 0x9A)), gain: outs.find(x => hasU(x, 0x7E)), create: feats.find(x => hasU(x, 0x25)), load: feats.find(x => hasU(x, 0x8B) || hasU(x, 0x8C))
+    };
+    if (!r.effect || !r.constant || !r.op) throw new Error('this device has no constant-force effect');
+    FFB.dev = dev; FFB.r = r;
+    const send = (rep, v) => dev.sendReport(rep.reportId, packReport(rep, v));
+    if (r.ctrl) { await send(r.ctrl, { 0x9A: true }); await send(r.ctrl, { 0x97: true }); }   // reset, enable actuators
+    if (r.gain) await send(r.gain, { 0x7E: 255 });
+    FFB.block = 1;
+    if (r.create) {                                                                           // ask the device for an effect slot
+      await dev.sendFeatureReport(r.create.reportId, packReport(r.create, { 0x26: true, 0x25: true }));
+      if (r.load) { const dv = await dev.receiveFeatureReport(r.load.reportId); const b = dv.getUint8(dv.byteLength > r.load.items.length ? 1 : 0); if (b > 0) FFB.block = b; }
+    }
+    // infinite constant force on the steering axis (direction fixed: some bases ignore it, see the Linux pidff quirk)
+    await send(r.effect, { 0x22: FFB.block, 0x26: true, 0x50: 0xFFFF, 0x54: 0, 0x51: 0, 0x52: 255, 0x53: 0xFF, 0x55: 1, 0x56: 1, 0x57: 0x4000, 0xA7: 0 });
+    await send(r.constant, { 0x22: FFB.block, 0x70: 0 });
+    await send(r.op, { 0x22: FFB.block, 0x79: true, 0x7C: 1 });
+    FFB.err = ''; dev.addEventListener?.('disconnect', ffbClose);
+  } catch (e) { FFB.err = String(e.message || e); FFB.dev = null; }
+  ffbStatus();
+}
+async function ffbClose() { const d = FFB.dev; FFB.dev = null; try { if (d && FFB.r) await d.sendReport(FFB.r.op.reportId, packReport(FFB.r.op, { 0x22: FFB.block, 0x7B: true, 0x7C: 1 })); if (d) await d.close(); } catch (e) {} ffbStatus(); }
+function ffbStatus() { if (!$('ffbBtn')) return; $('ffbBtn').textContent = FFB.dev ? 'Disconnect' : 'Connect force feedback'; $('ffbMsg').textContent = FFB.dev ? FFB.dev.productName || 'connected' : FFB.err; }
+// steering-wheel torque from the tyres, as a share of what the base can give (-1..1)
+function ffbTorque() {
+  const c = car; let mz = 0;
+  for (let i = 0; i < 2; i++) { const a = Math.abs(c.alp[i]), tp = 0.025 * Math.max(-0.2, 1 - a / (PEAK.a * 1.3)); mz += c.Ft[i] * (tp + 0.015); }   // pneumatic trail fades past peak; ~15 mm mechanical trail (DSS)
+  // weight jacking from kingpin inclination and caster lifts the car as the wheels turn, so it centres even when
+  // parked (SN5 DSS: 10 deg KPI, 33 mm scrub, 6 deg caster -> roughly 6 mm of effective lever)
+  const jack = -(c.Fz[0] + c.Fz[1]) * 0.006 * Math.sin(c.delta);
+  const atWheel = (-mz + jack) / VP.rack;                                              // Nm at the steering wheel, centring
+  const damp = -0.15 * (c.delta - (FFB.prevDelta ?? c.delta)) / (1 / 60) * VP.rack; FFB.prevDelta = c.delta;
+  return clamp((atWheel + damp) / 25, -1, 1);                                          // 25 Nm at the rim = full scale (FSAE steering is heavy: ~16 Nm at 1 g)
+}
+function ffbUpdate(now) {
+  if (!FFB.dev || !FFB.r || now - FFB.last < 16) return; FFB.last = now;
+  const live = G.mode === 'racing' || G.mode === 'countdown' || G.mode === 'done';
+  const f = live && !G.paused ? ffbTorque() * (prefs.ffbInv ? -1 : 1) * (prefs.ffbGain ?? 60) / 100 : 0;
+  const it = FFB.r.constant.items.find(x => itemUsages(x).includes(pidU(0x70))), mag = f * (it ? Math.max(Math.abs(it.logicalMaximum), Math.abs(it.logicalMinimum)) : 10000);
+  FFB.dev.sendReport(FFB.r.constant.reportId, packReport(FFB.r.constant, { 0x22: FFB.block, 0x70: mag })).catch(e => { FFB.err = String(e.message || e); });
 }
 
 function padUI() {
@@ -1811,22 +1978,22 @@ let padRaf = 0, padPrev = {};
 function padTick() {
   padRaf = 0;
   const pads = listPads();
-  if (!pads.length) { Object.assign(PAD, { steer: 0, thr: 0, brake: 0, kind: '', index: -1 }); padUI(); return; }
+  if (!pads.length) { Object.assign(PAD, { steer: 0, steerDeg: 0, thr: 0, brake: 0, kind: '', index: -1 }); padUI(); return; }
   padRaf = requestAnimationFrame(padTick);
   if (document.hidden) return;
   const p = pickPad(pads);
   if (!p) return;
   if (SU.on && SU.check) {   // live check: show the processed inputs
     readPad(p); $('ckThr').style.width = Math.round(PAD.thr * 100) + '%'; $('ckBrk').style.width = Math.round(PAD.brake * 100) + '%';
-    const st = -PAD.steer; $('ckSteer').style.left = (50 + Math.min(0, st) * 50) + '%'; $('ckSteer').style.width = Math.abs(st) * 50 + '%';
-    Object.assign(PAD, { steer: 0, thr: 0, brake: 0 }); padPrev = { start: true, restart: true, confirm: true, back: true }; return;
+    const st = clamp(-PAD.steerDeg / (DELTA_MAX * 180 / Math.PI * VP.rack), -1, 1); $('ckSteer').style.left = (50 + Math.min(0, st) * 50) + '%'; $('ckSteer').style.width = Math.abs(st) * 50 + '%';
+    Object.assign(PAD, { steer: 0, steerDeg: 0, thr: 0, brake: 0 }); padPrev = { start: true, restart: true, confirm: true, back: true }; return;
   }
   if (SU.on) { Object.assign(PAD, { steer: 0, thr: 0, brake: 0 }); setupTick(p); padPrev = { start: true, restart: true, confirm: true, back: true }; return; }
   const act = readPad(p);
   for (const a in act) { if (act[a] && !padPrev[a]) padAction(a); }
   padPrev = act;
 }
-// a wheel steers faster than keys or a stick, so the line is re-checked when the device changes (on the title only)
+// the line doesn't depend on the device; refresh the title (bindings, previews) when one connects
 function resimForDevice() { if (G.mode === 'title' && !SU.on) { refreshSim(); paintLine(); refreshTitle(); } }
 function padStart() { padUI(); if (!padRaf) padRaf = requestAnimationFrame(padTick); resimForDevice(); }
 addEventListener('gamepadconnected', padStart);
@@ -1868,7 +2035,7 @@ btn('pResume', () => setPause(false)); btn('pRestart', () => startRun()); btn('p
 btn('rAgain', () => startRun()); btn('rMenu', () => toTitle());
 
 /* ---------------------------------------------------------------- flow */
-function carStats(c) { return `${c.m} kg · ${Math.round(c.Pmax / 1000)} kW · ${c.Tmax} Nm · ${c.G.toFixed(2)}:1 · CL·A ${c.ClA.toFixed(1)}`; }
+function carStats(c) { return `#${c.num} · ${Math.round(c.m)} kg · ${Math.round(c.Pmax / 1000)} kW · ${c.Tmax} Nm · ${c.G.toFixed(2)}:1 · CL·A ${c.ClA.toFixed(1)}`; }
 // bars on fixed scales so they mean the same thing on every visit
 const BAR_DEFS = [['0–75 m', 'acc', 6.0, 3.6, v => v.toFixed(2) + ' s'], ['Top speed', 'top', 90, 150, v => Math.round(v) + ' km/h'], ['Grip 40', 'lo', 1.0, 1.8, v => v.toFixed(2) + ' g'], ['Grip 100', 'hi', 1.0, 3.0, v => v.toFixed(2) + ' g']];
 function carBars(id) { const st = STATS[id]; return '<span class="bars">' + BAR_DEFS.map(([lab, k, a, b, f]) => `<span>${lab}</span><i><b style="width:${Math.round(clamp((st[k] - a) / (b - a), 0.04, 1) * 100)}%"></b></i><span>${f(st[k])}</span>`).join('') + '</span>'; }
@@ -1877,7 +2044,7 @@ function buildCarPick() {
   $('carPick').innerHTML = CAR_IDS.map((id, i) => { const c = CARS[id];
     let best = null; try { const r = JSON.parse(localStorage.getItem(STORE_KEY(id)) || 'null'); best = r && r.bestLap; } catch (e) {}
     return `<button class="btn${id === VP.id ? ' sel' : ''}" data-car="${id}" role="radio" aria-checked="${id === VP.id}" title="${c.name} (${i + 1})">`
-      + (PREVIEW[id] ? `<img class="cp" src="${PREVIEW[id]}" alt="${c.name}">` : '<span class="cp"></span>') + `<span class="cn"><b>${c.name}</b><i>${c.year}</i></span>${carBars(id)}<span class="cs">${carStats(c)}</span><span class="cb">Sim <b>${fmt(SIM[id])}</b>${VALID[id] && !VALID[id].ok ? ' <i>unverified</i>' : ''} · Best <b>${fmt(best)}</b></span></button>`; }).join('');
+      + (PREVIEW[id] ? `<img class="cp" src="${PREVIEW[id]}" alt="${c.name}">` : '<span class="cp"></span>') + `<span class="cn"><b>${c.name}</b><i>${c.year}</i></span>${carBars(id)}<span class="cs">${carStats(c)}</span><span class="cb">Sim <b>${fmt(SIM[id])}</b> · Best <b>${fmt(best)}</b></span></button>`; }).join('');
   $('carPick').querySelectorAll('.btn').forEach(b => b.addEventListener('click', e => { if (e.detail) b.blur(); if (b.dataset.car !== VP.id) selectCar(b.dataset.car); }));
   if (hadFocus) { const sel = $('carPick').querySelector('.sel'); sel.classList.add('pf'); sel.focus(); }
 }
@@ -1894,11 +2061,11 @@ function refreshOpts() {
   $('oCam').innerHTML = 'Camera <b>' + CAMS[G.camMode] + '</b>';
   $('oLine').innerHTML = 'Line <b>' + (prefs.line ? 'On' : 'Off') + '</b>';
 }
-function show(id, on) { $(id).classList.toggle('hidden', !on); document.body.classList.toggle('driving', (G.mode === 'racing' || G.mode === 'countdown' || G.mode === 'done') && !G.paused); wake(); }
+function show(id, on) { $(id).classList.toggle('hidden', !on); document.body.classList.toggle('driving', (G.mode === 'racing' || G.mode === 'countdown' || G.mode === 'done') && !G.paused); if (FFB.dev) { FFB.last = 0; ffbUpdate(performance.now()); } wake(); }   // pausing or leaving a run releases the wheel
 function toTitle() { camera.near = 0.1; G.mode = 'title'; G.paused = false; show('title', true); show('pause', false); show('results', false); show('hud', false); refreshTitle(); ghost3.g.visible = false; G.attractT = 0; G.camInit = false; }
 function startRun() {
   if (touchOnly) return;
-  releaseKeys();
+  releaseKeys(); vdReset();
   G.mode = 'countdown'; G.paused = false; show('title', false); show('pause', false); show('results', false); show('hud', true);
   placeCar(T.gridK, 0); car.energy = 0; skid.clear(); smoke.clear(); sparks.clear();
   Object.assign(G, { lap: 0, laps: [], sec: 0, s1: false, s2: false, valid: true, cutT: 0, curSec: [null, null, null], runBestSec: [null, null, null], runBest: null, last: null, cdT: 0, cdLights: 0, cdOut: 1.0 + Math.random() * 1.2, lightsT: 0, rec: null, ghostRec: null, camInit: false, finishT: 0, prevBest: store.bestLap, t: 0, toastT: 0, warnT: 0, lapRefTel: null, lapGhost: null });
@@ -2010,17 +2177,19 @@ function ghostAt(t) {
   const gd = G.lapGhost; if (!gd || !prefs.ghost) return null; const d = gd.d, n = d.length / 3, f = t / gd.dt; if (f >= n - 1 || f < 0) return null;
   const i = Math.floor(f), u = f - i; return { x: lerp(d[i * 3], d[i * 3 + 3], u), y: lerp(d[i * 3 + 1], d[i * 3 + 4], u), psi: lerp(d[i * 3 + 2], d[i * 3 + 5], u) };
 }
-function inputs() {
-  if (G.mode !== 'racing') return { thr: 0, brake: G.mode === 'done' ? 0.35 : 0, steer: G.mode === 'done' ? clamp(-car.d * 0.05 - wrapA(car.psi - Math.atan2(T.TY[car.idx], T.TX[car.idx])) * 1.2, -1, 1) : 0 };
-  // keyboard and gamepad/wheel combined: pedals take the larger value, keyboard steering wins when held
+function inputs(dt) {
+  if (G.mode !== 'racing') return { thr: 0, brake: G.mode === 'done' ? 0.35 : 0, delta: G.mode === 'done' ? clamp(-car.d * 0.05 - wrapA(car.psi - Math.atan2(T.TY[car.idx], T.TX[car.idx])) * 1.2, -1, 1) * 0.25 : 0 };
   const ks = (isDown('ArrowLeft', 'KeyA') ? 1 : 0) - (isDown('ArrowRight', 'KeyD') ? 1 : 0);
-  return {
-    thr: Math.max(isDown('ArrowUp', 'KeyW') ? 1 : 0, PAD.thr), brake: Math.max(isDown('ArrowDown', 'KeyS') ? 1 : 0, PAD.brake),
-    steer: ks || PAD.steer, wheel: !ks && PAD.kind === 'wheel'
-  };
+  const kt = isDown('ArrowUp', 'KeyW'), kb = isDown('ArrowDown', 'KeyS');
+  // a wheel drives the car directly: its angle through the car's steering ratio, pedals as they are
+  if (PAD.kind === 'wheel' && !ks && !kt && !kb) return { delta: PAD.steerDeg * Math.PI / 180 / VP.rack, thr: PAD.thr, brake: PAD.brake };
+  // keyboard (or a gamepad) goes through the virtual driver; keys win while held
+  const digital = !!(ks || kt || kb) || PAD.kind !== 'pad';
+  const it = digital ? { digital, steer: ks, thr: kt ? 1 : 0, brake: kb ? 1 : 0 } : { digital, steer: PAD.steer, thr: PAD.thr, brake: PAD.brake };
+  return virtualDriver(dt, it, envFor(VP.id));
 }
 function simulate(dt) {
-  const inp = inputs();
+  const inp = inputs(dt);
   const prevS = car.s; const prevT = G.t;
   physStep(dt, inp); G.t += dt;
   if (G.mode !== 'racing' && G.mode !== 'done') return;
@@ -2055,6 +2224,7 @@ function tick(now) {
   if (!running && !G.dirty && (G.mode !== 'title' || now - lastT < 31)) return; // title attract runs at ~30 fps
   let dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
   G.dirty = false; frame++;
+  ffbUpdate(now);
   if (running) {
     if (G.mode === 'countdown') {
       G.cdT += dt; const n = Math.min(5, Math.floor(G.cdT / 0.75));
@@ -2102,8 +2272,9 @@ function tick(now) {
   if (G.mode !== 'title') { car3.g.position.set(car.x, h, -car.y); car3.g.rotation.y = car.psi;
   const grade = T.HD[car.idx] * Math.cos(car.psi - Math.atan2(T.TY[car.idx], T.TX[car.idx])); car3.g.rotation.z = Math.atan(grade);
   const kerbN = car.kerb.reduce((a, b) => a + b, 0);
-  car3.body.rotation.x = clamp(car.ay * 0.0035, -0.05, 0.05); car3.body.rotation.z = clamp(-car.ax * 0.0028, -0.04, 0.04);
-  car3.body.position.y = kerbN && v > 3 ? (Math.random() - 0.5) * 0.025 : 0;
+  // roll outward in corners, nose down under braking (+x is forward, so a nose-down pitch is a negative z rotation), squat under downforce
+  car3.body.rotation.x = clamp(car.ay * VP.rollGrad, -0.06, 0.06); car3.body.rotation.z = clamp(car.ax * VP.pitchGrad, -0.05, 0.05);
+  car3.body.position.y = -Math.min(0.03, AIR * v * v * Math.max(0, VP.ClA) * VP.heave) + (kerbN && v > 3 ? (Math.random() - 0.5) * 0.02 : 0);
   car3.wheels.forEach((w, i) => { if (running) car.spin[i] -= car.w[i] * dt; w.spin.rotation.z = car.spin[i]; if (i < 2) w.steer.rotation.y = car.delta; });
   }
   car3.helm.visible = !(G.camMode === 3 && G.mode !== 'title');
@@ -2190,7 +2361,7 @@ setSound(false); onFS(); refreshTitle(); placeCar(T.gridK, 0); resize();
 bindSetupButtons(); if (listPads().length) padStart();
 renderPreviews(); refreshTitle();
 if (touchOnly) { show('msg', true); show('title', false); show('corner', false); }
-window.__racing = { G, car, T, get store() { return store; }, VP, CARS, PAD, SU, binds: () => binds, VALID, CAPF, driveLap, syncWheels, PEAK, TY, motorForce, physStep, placeCar, applyCar, selectCar, alatMax, RL, SIM, lapSim, TRACK_ID, renderer, scene, camera, get car3() { return car3; }, rebuildCar, STATS, PREVIEW, envFor, ENV, get simMs() { return G_SIM_MS; } };
+window.__racing = { readPad, G, car, T, get store() { return store; }, VP, CARS, PAD, SU, binds: () => binds, driveLap, virtualDriver, vdReset, VD, get prefs() { return prefs; }, FFB, packReport, ffbTorque, inputs, syncWheels, PEAK, TY, motorForce, physStep, placeCar, applyCar, selectCar, RL, SIM, lapSim, TRACK_ID, renderer, scene, camera, get car3() { return car3; }, rebuildCar, STATS, PREVIEW, envFor, ENV, get simMs() { return G_SIM_MS; } };
 wake();
 </script>
 </body>
