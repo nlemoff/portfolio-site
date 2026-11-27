@@ -19,6 +19,6 @@ npm run build    # static output in out/
   - `page.py` turns the layout into `src/generated/house.html`, `src/styles/house.css` and `src/scripts/house.js`.
   - `npm run art` runs both. Edit the Python, not the generated files.
 - `src/pages/index.astro`: the page shell (meta tags, font) around the generated house.
-- `public/games/`: the three games (Time Trial, Aim Trainer, Ringfall), each a self-contained page loaded into the basement CRT. three.js 0.170.0 is vendored in `public/games/vendor/` (MIT).
+- `public/games/`: the three games (Time Trial, Aim Trainer, Ringfall), each a self-contained page loaded into the basement CRT. three.js 0.170.0 is vendored in `public/games/vendor/` (MIT). Time Trial's Spa, Monza and Donington layouts are derived from [OpenLAP](https://github.com/mc12027/OpenLAP-Lap-Time-Simulator) by Michael Chalkiopoulos and are GPL-3.0 (`public/games/racing/LICENSE-GPL-3.0.txt`); the Michigan layout and car data come from Formula Electric at Berkeley's FEBSim. `art/racing_tracks.py` rebuilds `public/games/racing/tracks.js` from them.
 
 Add `?date=YYYY-MM-DD&time=HH:MM` to the URL to preview seasons and time of day.
