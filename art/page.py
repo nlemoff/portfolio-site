@@ -680,7 +680,9 @@ if (root.classList.contains('winter') && !RM){
 
 /* ---------------- games: tabs, full screen, scores */
 var frame = $('#gframe'), want = frame.dataset.src, loaded = false;
-function load(){ if (!loaded){ loaded = true; frame.src = want; } }
+// ?v=<deploy time>: the games are cached for up to 10 min, and a refresh of the page doesn't refetch an iframe, so
+// without it a new deploy can take a while to show up inside the house
+function load(){ if (!loaded){ loaded = true; frame.src = want + '?v=' + (document.documentElement.dataset.build || ''); } }
 $$('.gtab').forEach(function(b){ b.addEventListener('click', function(){ $$('.gtab').forEach(function(x){ x.setAttribute('aria-pressed', String(x === b)); }); want = '/games/' + b.dataset.game + '/index.html'; frame.title = b.textContent; loaded = false; load(); }); });
 if ('IntersectionObserver' in window){
   new IntersectionObserver(function(es){ if (es[0].isIntersecting) load(); }, {rootMargin:'400px 0px'}).observe(frame);

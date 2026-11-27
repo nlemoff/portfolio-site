@@ -107,6 +107,7 @@ td.x{color:var(--red);text-decoration:line-through;text-decoration-thickness:2px
 .meter i{display:block;height:100%;width:0;background:var(--gold)}
 #suStep{min-height:2.4em;max-width:26em;margin-left:auto;margin-right:auto}
 #suCheck{margin-top:.8em;display:grid;gap:.45em;min-width:16em}
+.sucode{margin-top:.8em}.sucode input[type=text],#suRot{width:13em;max-width:100%;font:inherit;font-size:.85em;padding:.2em .4em;background:var(--ink);color:inherit;border:2px solid var(--n3)}
 .chk{display:grid;grid-template-columns:5.5em 1fr;align-items:center;gap:.6em;font-size:.85em;color:var(--n6);text-align:left}
 .chk i{position:relative;display:block;height:.8em;background:var(--ink);border:2px solid var(--n3)}
 .chk i b{position:absolute;top:0;bottom:0;left:0;width:0;background:var(--gold)}
@@ -236,9 +237,10 @@ body.driving #corner:hover,body.driving #corner:focus-within{opacity:1}
     <div class="chk"><span>Steering</span><i class="ctr"><b id="ckSteer"></b></i></div>
     <div class="chk"><span>Throttle</span><i><b id="ckThr"></b></i></div>
     <div class="chk"><span>Brake</span><i><b id="ckBrk"></b></i></div>
-    <label class="chk"><span>Rotation</span><span><input id="suRot" type="number" min="90" max="2520" step="10" style="width:5em"> ° lock to lock <small id="suRotHint"></small></span></label>
+    <label class="chk"><span>Rotation</span><span><input id="suRot" type="number" min="90" max="2520" step="10" style="width:5em;font-size:.85em"> ° lock to lock <small id="suRotHint"></small></span></label>
     <div class="chk" id="ffbRow"><span>Force</span><span><button class="btn" id="ffbBtn">Connect force feedback</button> <input id="ffbGain" type="range" min="0" max="100" step="5" style="width:6em" aria-label="Force feedback strength"> <label><input id="ffbInv" type="checkbox"> invert</label> <small id="ffbMsg"></small></span></div>
   </div>
+  <div class="chk sucode"><span>Setup code</span><span><input id="suCode" type="text" spellcheck="false" autocomplete="off" placeholder="Paste a saved code to skip setup" aria-label="Wheel setup code"> <button class="btn" id="suCopy">Copy</button> <button class="btn" id="suLoad">Load</button> <small id="suCodeMsg"></small></span></div>
   <div class="menu">
     <button class="btn go hidden" id="suDone">Done</button>
     <button class="btn hidden" id="suRedo">Redo setup</button>
@@ -1830,6 +1832,7 @@ function openSetup() {
   const p = pickPad(listPads()); if (!p) return;
   SU.back = G.mode === 'title' ? 'title' : 'pause';
   Object.assign(SU, { on: true, pad: p.index, step: -1, data: {}, check: false }); show(SU.back, false); show('setup', true);
+  $('suCode').value = binds[p.id] ? setupCode(p.id) : ''; codeMsg('');
   if (binds[p.id]) showCheck(); else nextStep();
 }
 // live view of what the game reads from the wheel and pedals
@@ -1848,10 +1851,38 @@ function redoSetup() {
 }
 function nextStep() {
   SU.step++; SU.base = null; SU.cand = null; SU.held = null; SU.settle = 0;
-  if (SU.step >= STEPS.length) { const p = navigator.getGamepads()[SU.pad]; if (p) { binds[p.id] = SU.data; saveBinds(); } showCheck(); return; }
+  if (SU.step >= STEPS.length) { const p = navigator.getGamepads()[SU.pad]; if (p) { binds[p.id] = SU.data; saveBinds(); $('suCode').value = setupCode(p.id); codeMsg('Saved in this browser. Copy the code to keep a backup.'); } showCheck(); return; }
   const s = STEPS[SU.step]; $('suStep').textContent = s.text; $('suSkip').classList.toggle('hidden', !s.btn); $('suMeter').style.width = '0';
 }
 function endSetup() { SU.on = false; SU.check = false; for (const id of ['suCheck', 'suDone', 'suRedo']) $(id).classList.add('hidden'); $('suMeterBox').classList.remove('hidden'); show('setup', false); if (SU.back) show(SU.back, true); padUI(); resimForDevice(); }
+/* Setup code: the wheel's bindings plus rotation and force-feedback settings as one line of text, so a setup can be
+   saved anywhere and pasted back (another browser, another computer, after clearing site data). Setups are also
+   kept automatically in this browser, per device. */
+const CODE_TAG = 'FEBWHEEL1:';
+function setupCode(id) {
+  const b = binds[id]; if (!b) return '';
+  return CODE_TAG + btoa(JSON.stringify({ b, r: prefs.wheelRot, g: prefs.ffbGain, i: !!prefs.ffbInv }));
+}
+function codeMsg(t) { $('suCodeMsg').textContent = t; }
+async function copySetupCode() {
+  const p = navigator.getGamepads()[SU.pad], code = p ? setupCode(p.id) : '';
+  if (!code) { codeMsg('Finish setup first'); return; }
+  $('suCode').value = code; $('suCode').select();
+  try { await navigator.clipboard.writeText(code); codeMsg('Copied. Save it anywhere.'); } catch (e) { codeMsg('Select the code and copy it'); }
+}
+function loadSetupCode() {
+  const p = navigator.getGamepads()[SU.pad], raw = $('suCode').value.trim();
+  if (!p) { codeMsg('Connect the wheel first'); return; }
+  try {
+    if (!raw.startsWith(CODE_TAG)) throw 0;
+    const d = JSON.parse(atob(raw.slice(CODE_TAG.length))), ok = ch => ch && (ch.t === 'a' || ch.t === 'b') && Number.isInteger(ch.i);
+    if (!d.b || !ok(d.b.steer) || !ok(d.b.thr) || !ok(d.b.brake)) throw 0;
+    binds[p.id] = d.b; saveBinds();
+    if (d.r) prefs.wheelRot = clamp(+d.r, 90, 2520); if (d.g != null) prefs.ffbGain = clamp(+d.g, 0, 100); prefs.ffbInv = !!d.i; savePrefs();
+    for (const id of ['suMeterBox', 'suSkip']) $(id).classList.add('hidden');
+    showCheck(); codeMsg('Loaded');
+  } catch (e) { codeMsg("That code doesn't look right"); }
+}
 function used(t, i) { return Object.values(SU.data).some(b => b.t === t && b.i === i); }
 function setupTick(p) {
   if (SU.waitRelease) { if (!p.buttons.some(b => bval(b) > 0.3)) { SU.waitRelease = false; nextStep(); } return; }
@@ -1897,6 +1928,8 @@ function bindSetupButtons() {
   $('ffbGain').addEventListener('input', () => { prefs.ffbGain = +$('ffbGain').value; savePrefs(); });
   $('ffbInv').addEventListener('change', () => { prefs.ffbInv = $('ffbInv').checked; savePrefs(); });
   btn('ffbBtn', () => FFB.dev ? ffbClose() : ffbConnect());
+  btn('suCopy', copySetupCode); btn('suLoad', loadSetupCode);
+  $('suCode').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') loadSetupCode(); });   // typing here isn't driving
 }
 
 /* ---- Force feedback (WebHID, Chrome/Edge) ----
@@ -2392,7 +2425,7 @@ setSound(false); onFS(); refreshTitle(); placeCar(T.gridK, 0); resize();
 bindSetupButtons(); if (listPads().length) padStart();
 renderPreviews(); refreshTitle();
 if (touchOnly) { show('msg', true); show('title', false); show('corner', false); }
-window.__racing = { readPad, poseDriver, G, car, T, get store() { return store; }, VP, CARS, PAD, SU, binds: () => binds, driveLap, virtualDriver, vdReset, VD, get prefs() { return prefs; }, FFB, packReport, ffbTorque, inputs, syncWheels, PEAK, TY, motorForce, physStep, placeCar, applyCar, selectCar, RL, SIM, lapSim, TRACK_ID, renderer, scene, camera, get car3() { return car3; }, rebuildCar, STATS, PREVIEW, envFor, ENV, get simMs() { return G_SIM_MS; } };
+window.__racing = { readPad, poseDriver, openSetup, G, car, T, get store() { return store; }, VP, CARS, PAD, SU, binds: () => binds, driveLap, virtualDriver, vdReset, VD, get prefs() { return prefs; }, FFB, packReport, ffbTorque, inputs, syncWheels, PEAK, TY, motorForce, physStep, placeCar, applyCar, selectCar, RL, SIM, lapSim, TRACK_ID, renderer, scene, camera, get car3() { return car3; }, rebuildCar, STATS, PREVIEW, envFor, ENV, get simMs() { return G_SIM_MS; } };
 wake();
 </script>
 </body>
