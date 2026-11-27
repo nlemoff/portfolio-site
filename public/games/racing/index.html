@@ -142,6 +142,7 @@ td.x{color:var(--red);text-decoration:line-through;text-decoration-thickness:2px
 /* corner cluster: top right, same in every game */
 #corner{position:fixed;right:calc(var(--s)*.7);top:calc(var(--s)*.7);display:flex;gap:calc(var(--s)*.5);z-index:5}
 /* faded while driving, full strength on title, pause and results */
+body.fs.driving.idle,body.fs.driving.idle *{cursor:none!important}   /* full screen, driving, mouse still: no cursor */
 body.driving #corner{opacity:.35}
 body.driving #corner:hover,body.driving #corner:focus-within{opacity:1}
 .ib{pointer-events:auto;cursor:pointer;--ib:clamp(26px,calc(var(--s)*2.8),44px);width:var(--ib);height:var(--ib);padding:0;display:grid;place-items:center;background:var(--ink);color:var(--cream2);border:3px solid var(--cream2);box-shadow:3px 3px 0 var(--ink)}
@@ -1273,10 +1274,14 @@ function physStep(dt, inp, free) {
     c.tc = clamp(c.tc + dt * (tcOver > 1.05 ? -10 * (tcOver - 1) : 3), 0.15, 1);
     // ABS (an assist: none of the three cars has one): each wheel is held near peak slip; the target shrinks as the
     // tyre corners harder, since a tyre at peak brake slip has little side grip left
+    // Rear axle as real units do it, for stability: the rears are held well short of peak slip (a rear tyre at
+    // peak brake slip has little side grip, and that's a spin) and "select-low": both get the pressure the
+    // worse one can take.
     for (let i = 0; i < 4; i++) {
-      const lim = -PEAK.k * Math.max(0.3, 1 - (c.alp[i] / PEAK.a) ** 2);
+      const lim = -PEAK.k * (i < 2 ? 1 : 0.55) * Math.max(0.3, 1 - (c.alp[i] / PEAK.a) ** 2);
       c.abs[i] = clamp(c.abs[i] + dt * (kap[i] < lim ? -14 : 5), 0.1, 1);
     }
+    c.abs[2] = c.abs[3] = Math.min(c.abs[2], c.abs[3]);
   } else { c.tc = 1; c.abs.fill(1); }
   if (v > 0.05) { Fx -= drag * c.vx / v; Fy -= drag * c.vy / v; }
   const grade = free ? 0 : T.HD[c.idx] * Math.cos(c.psi - Math.atan2(T.TY[c.idx], T.TX[c.idx]));
@@ -1495,7 +1500,7 @@ function carPerf(E) {
 function driveLap(prof, E, mode = 'keys', trace, pace = 1) {   // pace: share of the line's speed the driver aims for
   const snap = structuredClone(car), N = RL.N, dt = 1 / 240, bad = [];
   const k0 = (N - Math.round(60 / T.ds)) % N; placeCar(k0, 0); car.x = RL.X[k0]; car.y = RL.Y[k0]; car.vx = prof.v[k0]; syncWheels(); vdReset();
-  let t = 0, dist = 0, prevS = car.s, tLap = 0, started = false, errMax = 0, hits = 0, kb = k0, key = 0, keyT = 0, maxBeta = 0, thrCap = 1, wide = 0, rk = 0;
+  let t = 0, dist = 0, prevS = car.s, tLap = 0, started = false, errMax = 0, hits = 0, kb = k0, key = 0, keyT = 0, maxBeta = 0, thrCap = 1, wide = 0, rk = 0, held = 0;
   while (t < 400) {
     const v = Math.max(1, Math.hypot(car.vx, car.vy));
     let bd = 1e9; const k = car.idx; for (let q = -6; q <= 6; q++) { const j = (k + q + N) % N, d = (RL.X[j] - car.x) ** 2 + (RL.Y[j] - car.y) ** 2; if (d < bd) { bd = d; kb = j; } }
@@ -1507,14 +1512,25 @@ function driveLap(prof, E, mode = 'keys', trace, pace = 1) {   // pace: share of
     const kNeed = 2 * ly / Math.max(1, L2), aMax = envAt(E.lat, v);
     let tv = prof.v[j2]; for (let q = 1, n = Math.max(1, Math.round(v * 0.3 / T.ds)); q <= n; q++) tv = Math.min(tv, prof.v[(kb + q) % N]); tv *= pace;
     let inp;
-    if (mode === 'rawkeys') {
+    if (mode === 'holdkeys') {
+      // a person on raw keys who holds the steering key through a corner rather than tapping finely: press while the
+      // line needs more than ~half of what's currently on, with ~0.15 s reactions; pedals on/off
+      const dNeed = Math.atan(VP.L * kNeed) + 0.0016 * kNeed * v * v;
+      keyT -= dt;
+      if (keyT <= 0) { const want = Math.abs(dNeed) > 0.015 && Math.abs(rk) < Math.abs(dNeed) * 1.5 ? Math.sign(dNeed) : 0; if (want !== key) { key = want; keyT = 0.1; } }
+      rk = keySteer(rk, key, v, dt);
+      // feet like a person following the colours: brake held from the marker until down to the corner speed,
+      // throttle back on once it's below
+      if (held === 1 && v <= tv) held = 0; else if (held !== 1 && v > tv + 0.6) held = 1;
+      const brakeK = held === 1, thrK = !brakeK && v < tv - 0.3 && prof.phase[kb] === 0;   // throttle on green only
+      inp = { delta: rk, thr: thrK ? 1 : 0, brake: brakeK ? 1 : 0 };
+    } else if (mode === 'rawkeys') {
       // a person tapping raw keys: steer key toward the angle the line needs (kinematic + a little understeer),
       // on/off pedals with a little hysteresis
       const dNeed = Math.atan(VP.L * kNeed) + 0.0016 * kNeed * v * v;
       keyT -= dt;
       if (keyT <= 0) { const want = dNeed > rk + 0.004 ? 1 : dNeed < rk - 0.004 ? -1 : 0; if (want !== key) { key = want; keyT = 0.05; } }
-      const tgt = key * DELTA_MAX, back = Math.abs(tgt) < Math.abs(rk) || tgt * rk < 0, rate = back ? 1.2 : 0.6;
-      rk += clamp(tgt - rk, -rate * dt, rate * dt);
+      rk = keySteer(rk, key, v, dt);
       const brakeK = v > tv + 0.3, thrK = !brakeK && v < tv - 0.3;
       inp = { delta: rk, thr: thrK ? 1 : 0, brake: brakeK ? 1 : 0 };
     } else if (mode === 'pad') {
@@ -2081,8 +2097,12 @@ function onFS() {
   b.innerHTML = pixIcon(on ? FS_OUT : FS_IN); b.setAttribute('aria-label', on ? 'Exit full screen' : 'Full screen'); b.title = (on ? 'Exit full screen' : 'Full screen') + ' (F)';
   // Esc leaves full screen before the page sees the key, so treat that exit as a pause
   if (wasFS && !on && !fsMine) setPause(true);
-  wasFS = on; fsMine = false; wake();
+  wasFS = on; fsMine = false; document.body.classList.toggle('fs', on); mouseIdle(); wake();
 }
+// in full screen the cursor hides while driving once the mouse has been still for a moment; moving it brings it back
+let idleT = 0;
+function mouseIdle() { document.body.classList.remove('idle'); clearTimeout(idleT); idleT = setTimeout(() => document.body.classList.add('idle'), 1500); }
+addEventListener('mousemove', mouseIdle); addEventListener('mousedown', mouseIdle);
 document.addEventListener('fullscreenchange', onFS);
 if (parentDoc) parentDoc.addEventListener('fullscreenchange', onFS);
 
@@ -2255,18 +2275,32 @@ function inputs(dt) {
     const it = digital ? { digital, steer: ks, thr: kt ? 1 : 0, brake: kb ? 1 : 0 } : { digital, steer: PAD.steer, thr: PAD.thr, brake: PAD.brake };
     return virtualDriver(dt, it, envFor(VP.id));
   }
-  // raw (default): the inputs are the car's controls, as with a wheel. A held key turns the steering at a steady
-  // hand speed toward full lock (~34 deg/s at the road wheels, ~140 deg/s at the steering wheel) and lets it come
-  // back twice as fast; tap to hold part-lock. Throttle and brake are on or off. A stick maps straight to lock.
+  // raw (default): no driver model. Keys steer through keySteer (speed-sensitive, below); throttle and brake are
+  // on or off. A stick maps straight to lock.
   if (digital) {
-    const tgt = ks * DELTA_MAX, back = Math.abs(tgt) < Math.abs(RAWK.d) || tgt * RAWK.d < 0, rate = back ? 1.2 : 0.6;
-    RAWK.d += clamp(tgt - RAWK.d, -rate * dt, rate * dt);
+    RAWK.d = keySteer(RAWK.d, ks, Math.hypot(car.vx, car.vy), dt);
     return { delta: RAWK.d, thr: kt ? 1 : 0, brake: kb ? 1 : 0 };
   }
   RAWK.d = PAD.steer * DELTA_MAX;
   return { delta: RAWK.d, thr: PAD.thr, brake: PAD.brake };
 }
 const RAWK = { d: 0 };
+/* Raw key steering, speed-sensitive as keyboard steering is in racing games. An on/off key can't hold 2 deg at
+   130 km/h, and a fixed lock rate put 5 deg on with the shortest tap. So a held key winds on toward the angle the
+   car needs for its full cornering grip at this speed (kinematic angle + its ~0.9 deg/g of understeer) plus a margin
+   that overdrives the fronts (full 38 deg lock at walking pace); slower at speed (~0.45 s to that angle), quicker
+   at low speed. You can still overdrive the fronts, or brake or lift the car into a spin, but a tap is a tap.
+   Steering into a slide (opposite lock) gets the slide angle on top. Pedals stay on/off. */
+function keyLock(v) {
+  const grip = VP.mu * VP.g + AIR * Math.max(0, VP.ClA) * v * v * VP.mu / VP.m, vv = Math.max(v * v, 1);
+  return Math.min(DELTA_MAX, Math.atan(VP.L * grip / vv) + 0.0016 * grip + PEAK.a * 0.35);
+}
+function keySteer(d, key, v, dt) {
+  const beta = Math.atan2(car.vy, Math.max(Math.abs(car.vx), 0.5)), lock = keyLock(v);
+  const lim = Math.min(DELTA_MAX, lock + (v > 3 && key * beta > 0 ? Math.abs(beta) : 0));
+  const tgt = key * lim, back = Math.abs(tgt) < Math.abs(d) || tgt * d < 0, rate = clamp(lock / (v > 15 ? 0.45 : 0.3), 0.2, 1.4) * (back ? 2.5 : 1);
+  return d + clamp(tgt - d, -rate * dt, rate * dt);
+}
 function simulate(dt) {
   const inp = inputs(dt);
   const prevS = car.s; const prevT = G.t;
